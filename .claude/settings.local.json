@@ -1,0 +1,19 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__railway-mcp-server__check-railway-status",
+      "mcp__railway-mcp-server__list-projects",
+      "mcp__railway-mcp-server__list-services",
+      "Bash(railway link:*)",
+      "Bash(railway status:*)",
+      "Bash(railway connect:*)",
+      "mcp__railway-mcp-server__list-variables",
+      "mcp__railway-mcp-server__link-service",
+      "Bash(psql:*)",
+      "Bash(git init:*)",
+      "Bash(git add:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

@@ -1,36 +1,110 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# HSL Bot Dashboard
 
-## Getting Started
+Dashboard для визуализации данных Telegram бота HashSlash School.
 
-First, run the development server:
+## 🚀 Быстрый запуск
+
+### 1. Установка зависимостей
+
+```bash
+npm install
+```
+
+### 2. Настройка окружения
+
+Создайте файл `.env.local` с параметрами подключения к базе данных:
+
+```bash
+POSTGRES_HOST=your_database_host
+POSTGRES_PORT=your_database_port
+POSTGRES_DB=your_database_name
+POSTGRES_USER=your_database_user
+POSTGRES_PASSWORD=your_database_password
+```
+
+### 3. Запуск в режиме разработки
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Откройте [http://localhost:3000](http://localhost:3000) в браузере.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 📊 Функциональность
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Главная страница (/)
+- Ключевые метрики: общее количество пользователей, активные бронирования, подтвержденные оплаты, регистрации на бесплатные уроки
+- Ручное обновление данных по запросу пользователя
 
-## Learn More
+### Курсы (/workshops)
+- Детальная статистика по курсам и потокам
+- Отображение активных потоков с количеством студентов
+- Таблица всех бронирований с информацией о потоках и фильтрацией по статусу
+- Информация о скидках и реферальных кодах
 
-To learn more about Next.js, take a look at the following resources:
+### Analytics (/analytics)
+- Графики активности по дням (последние 30 дней)
+- Топ событий пользователей
+- Детальная аналитика взаимодействий
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Content (/content)
+- Просмотр текущих текстов курсов из constants.py
+- Кнопки копирования для быстрого редактирования
+- JSON структуры для разработчиков
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 🔧 API Endpoints
 
-## Deploy on Vercel
+- `GET /api/stats` - Общая статистика
+- `GET /api/courses` - Статистика по курсам
+- `GET /api/course-streams` - Статистика по потокам курсов
+- `GET /api/events` - События и аналитика
+- `GET /api/bookings` - Последние бронирования
+- `GET /api/free-lessons` - Регистрации на бесплатные уроки
+- `GET /api/test-db` - Проверка соединения с БД
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 🗄️ Структура проекта
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```
+├── app/
+│   ├── api/           # API маршруты
+│   ├── analytics/     # Страница аналитики
+│   ├── content/       # Страница контента
+│   ├── free-lessons/  # Страница бесплатных уроков
+│   ├── workshops/     # Страница курсов
+│   └── page.tsx       # Главная страница
+├── components/        # React компоненты
+├── lib/
+│   ├── db.ts         # Подключение к PostgreSQL
+│   └── queries.ts    # SQL запросы
+└── .env.local        # Переменные окружения
+```
+
+## 🔍 Отладка
+
+### Проверка соединения с базой данных
+
+Перейдите на [http://localhost:3000/api/test-db](http://localhost:3000/api/test-db) для проверки подключения.
+
+### Просмотр логов
+
+```bash
+# Запуск с подробными логами
+npm run dev
+```
+
+## 📝 Примечания
+
+- Дашборд предназначен для локального использования
+- Ручное обновление данных по кнопке для предотвращения перегрузки базы данных
+- Все даты отображаются в российском формате (ru-RU)
+- Используется PostgreSQL база данных на Railway
+- Поддержка отслеживания потоков курсов и детальной аналитики
+
+## 🛠 Технологии
+
+- **Next.js 14** - React фреймворк
+- **TypeScript** - Типизация
+- **Tailwind CSS** - Стилизация
+- **Recharts** - Графики
+- **PostgreSQL** - База данных
+- **Lucide React** - Иконки
