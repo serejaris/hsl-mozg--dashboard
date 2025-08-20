@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import MetricCard from '@/components/MetricCard';
+import UserGrowthChart from '@/components/UserGrowthChart';
 import { Users, Calendar, CheckCircle, GraduationCap, RefreshCw } from 'lucide-react';
 
 interface DashboardStats {
@@ -11,20 +12,35 @@ interface DashboardStats {
   freeLessonRegistrations: number;
 }
 
+interface UserGrowthData {
+  date: string;
+  totalUsers: number;
+  newUsers: number;
+}
+
 export default function Home() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [userGrowthData, setUserGrowthData] = useState<UserGrowthData[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchStats = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/stats');
-      if (!response.ok) {
-        throw new Error('Failed to fetch stats');
+      const [statsResponse, growthResponse] = await Promise.all([
+        fetch('/api/stats'),
+        fetch('/api/user-growth')
+      ]);
+      
+      if (!statsResponse.ok || !growthResponse.ok) {
+        throw new Error('Failed to fetch data');
       }
-      const data = await response.json();
-      setStats(data);
+      
+      const statsData = await statsResponse.json();
+      const growthData = await growthResponse.json();
+      
+      setStats(statsData);
+      setUserGrowthData(growthData);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
@@ -98,6 +114,11 @@ export default function Home() {
             description="Registered for free lessons"
           />
         </div>
+      )}
+
+      {/* User Growth Chart */}
+      {userGrowthData.length > 0 && (
+        <UserGrowthChart data={userGrowthData} />
       )}
 
       <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">

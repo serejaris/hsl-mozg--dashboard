@@ -49,6 +49,12 @@ export interface DailyStats {
   events: number;
 }
 
+export interface UserGrowthData {
+  date: string;
+  totalUsers: number;
+  newUsers: number;
+}
+
 // Get overall dashboard statistics
 export async function getDashboardStats(): Promise<DashboardStats> {
   const client = await pool.connect();
@@ -320,6 +326,74 @@ export async function getFreeLessonRegistrations(limit: number = 50): Promise<Fr
       registered_at: row.registered_at.toISOString(),
       notification_sent: row.notification_sent || false,
       lesson_type: row.lesson_type || 'Unknown'
+    }));
+  } finally {
+    client.release();
+  }
+}
+
+// Get user growth data for the last N days
+export async function getUserGrowthData(days: number = 30): Promise<UserGrowthData[]> {
+  const client = await pool.connect();
+  try {
+    const result = await client.query(`
+      WITH date_series AS (
+        SELECT generate_series(
+          CURRENT_DATE - INTERVAL '${days} days',
+          CURRENT_DATE,
+          INTERVAL '1 day'
+        )::date AS date
+      ),
+      all_users AS (
+        SELECT user_id, DATE(created_at) as first_seen_date FROM bookings
+        UNION
+        SELECT user_id, DATE(created_at) as first_seen_date FROM events
+        UNION
+        SELECT user_id, DATE(registered_at) as first_seen_date FROM free_lesson_registrations
+      ),
+      first_user_appearances AS (
+        SELECT user_id, MIN(first_seen_date) as first_date
+        FROM all_users
+        GROUP BY user_id
+      ),
+      daily_new_users AS (
+        SELECT 
+          first_date as date,
+          COUNT(*) as new_users_count
+        FROM first_user_appearances
+        WHERE first_date >= CURRENT_DATE - INTERVAL '${days} days'
+        GROUP BY first_date
+      ),
+      cumulative_data AS (
+        SELECT 
+          ds.date,
+          COALESCE(dnu.new_users_count, 0) as new_users,
+          SUM(COALESCE(dnu.new_users_count, 0)) OVER (ORDER BY ds.date) as running_total
+        FROM date_series ds
+        LEFT JOIN daily_new_users dnu ON ds.date = dnu.date
+        ORDER BY ds.date
+      )
+      SELECT 
+        date,
+        new_users,
+        running_total + COALESCE((
+          SELECT COUNT(DISTINCT user_id) 
+          FROM (
+            SELECT user_id FROM bookings WHERE DATE(created_at) < CURRENT_DATE - INTERVAL '${days} days'
+            UNION
+            SELECT user_id FROM events WHERE DATE(created_at) < CURRENT_DATE - INTERVAL '${days} days'
+            UNION
+            SELECT user_id FROM free_lesson_registrations WHERE DATE(registered_at) < CURRENT_DATE - INTERVAL '${days} days'
+          ) as historical_users
+        ), 0) as total_users
+      FROM cumulative_data
+      ORDER BY date ASC
+    `);
+
+    return result.rows.map(row => ({
+      date: row.date.toISOString().split('T')[0],
+      totalUsers: parseInt(row.total_users),
+      newUsers: parseInt(row.new_users)
     }));
   } finally {
     client.release();

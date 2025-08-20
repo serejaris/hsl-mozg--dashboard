@@ -11,7 +11,8 @@
       "mcp__railway-mcp-server__link-service",
       "Bash(psql:*)",
       "Bash(git init:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git remote add:*)"
     ],
     "deny": [],
     "ask": []
