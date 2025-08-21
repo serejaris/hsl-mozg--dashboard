@@ -3,7 +3,9 @@
 import { useEffect, useState } from 'react';
 import FreeLessonsTable from '@/components/FreeLessonsTable';
 import MetricCard from '@/components/MetricCard';
-import { GraduationCap, Users, Calendar, RefreshCw } from 'lucide-react';
+import HotLeads from '@/components/HotLeads';
+import RegistrationTrendChart from '@/components/RegistrationTrendChart';
+import { GraduationCap, Users, RefreshCw } from 'lucide-react';
 
 interface FreeLessonRegistration {
   id: number;
@@ -62,16 +64,12 @@ export default function FreeLessonsPage() {
   // Calculate statistics
   const totalRegistrations = registrations.length;
   const uniqueUsers = new Set(registrations.map(r => r.user_id)).size;
-  const notificationsSent = registrations.filter(r => r.notification_sent).length;
+  
   const lessonTypeStats = registrations.reduce((acc, reg) => {
     const lessonType = reg.lesson_type || 'Unknown';
     acc[lessonType] = (acc[lessonType] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
-  
-  const mostPopularLessonType = Object.entries(lessonTypeStats).length > 0 
-    ? Object.entries(lessonTypeStats).sort(([,a], [,b]) => b - a)[0] 
-    : null;
 
   return (
     <div className="space-y-6">
@@ -93,41 +91,18 @@ export default function FreeLessonsPage() {
       </div>
 
       {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <MetricCard
           title="Total Registrations"
           value={totalRegistrations}
           icon={GraduationCap}
-          description="All free lesson sign-ups"
         />
         <MetricCard
           title="Unique Users"
           value={uniqueUsers}
           icon={Users}
-          description="Individual users registered"
         />
-        <MetricCard
-          title="Notifications Sent"
-          value={notificationsSent}
-          icon={Calendar}
-          description="Users who received notifications"
-        />
-        <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm font-medium text-gray-600">Most Popular</p>
-              <p className="text-2xl font-bold text-gray-900 mt-2">
-                {mostPopularLessonType ? mostPopularLessonType[1] : 0}
-              </p>
-              <p className="text-xs text-gray-500 mt-1">
-                {mostPopularLessonType ? mostPopularLessonType[0] : 'No data'}
-              </p>
-            </div>
-            <div className="p-3 bg-purple-50 rounded-lg">
-              <GraduationCap className="h-6 w-6 text-purple-600" />
-            </div>
-          </div>
-        </div>
+        <HotLeads />
       </div>
 
       {/* Lesson Type Statistics */}
@@ -150,6 +125,9 @@ export default function FreeLessonsPage() {
           </div>
         </div>
       )}
+
+      {/* Registration Trend Chart */}
+      <RegistrationTrendChart registrations={registrations} />
 
       {/* Registrations Table */}
       <FreeLessonsTable registrations={registrations} />

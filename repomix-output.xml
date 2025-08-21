@@ -1,0 +1,2749 @@
+This file is a merged representation of the entire codebase, combined into a single document by Repomix.
+
+<file_summary>
+This section contains a summary of this file.
+
+<purpose>
+This file contains a packed representation of the entire repository's contents.
+It is designed to be easily consumable by AI systems for analysis, code review,
+or other automated processes.
+</purpose>
+
+<file_format>
+The content is organized as follows:
+1. This summary section
+2. Repository information
+3. Directory structure
+4. Repository files (if enabled)
+5. Multiple file entries, each consisting of:
+  - File path as an attribute
+  - Full contents of the file
+</file_format>
+
+<usage_guidelines>
+- This file should be treated as read-only. Any changes should be made to the
+  original repository files, not this packed version.
+- When processing this file, use the file path to distinguish
+  between different files in the repository.
+- Be aware that this file may contain sensitive information. Handle it with
+  the same level of security as you would the original repository.
+</usage_guidelines>
+
+<notes>
+- Some files may have been excluded based on .gitignore rules and Repomix's configuration
+- Binary files are not included in this packed representation. Please refer to the Repository Structure section for a complete list of file paths, including binary files
+- Files matching patterns in .gitignore are excluded
+- Files matching default ignore patterns are excluded
+- Files are sorted by Git change count (files with more changes are at the bottom)
+</notes>
+
+</file_summary>
+
+<directory_structure>
+.claude/
+  settings.local.json
+app/
+  analytics/
+    page.tsx
+  api/
+    bookings/
+      route.ts
+    course-streams/
+      route.ts
+    courses/
+      route.ts
+    events/
+      route.ts
+    free-lessons/
+      route.ts
+    stats/
+      route.ts
+    test-db/
+      route.ts
+    user-growth/
+      route.ts
+  content/
+    page.tsx
+  free-lessons/
+    page.tsx
+  workshops/
+    page.tsx
+  globals.css
+  layout.tsx
+  page.tsx
+components/
+  BookingsTable.tsx
+  EventsChart.tsx
+  FreeLessonsTable.tsx
+  MetricCard.tsx
+  Navigation.tsx
+  UserGrowthChart.tsx
+lib/
+  db.ts
+  queries.ts
+public/
+  file.svg
+  globe.svg
+  next.svg
+  vercel.svg
+  window.svg
+.gitignore
+CLAUDE.local.md
+CLAUDE.md
+next.config.ts
+package.json
+postcss.config.mjs
+README.md
+tsconfig.json
+</directory_structure>
+
+<files>
+This section contains the contents of the repository's files.
+
+<file path="app/analytics/page.tsx">
+'use client';
+
+import { useEffect, useState } from 'react';
+import EventsChart from '@/components/EventsChart';
+import { TrendingUp, Users, Activity, RefreshCw } from 'lucide-react';
+
+interface DailyStats {
+  date: string;
+  newUsers: number;
+  bookings: number;
+  events: number;
+}
+
+interface EventStats {
+  eventType: string;
+  count: number;
+}
+
+export default function AnalyticsPage() {
+  const [dailyStats, setDailyStats] = useState<DailyStats[]>([]);
+  const [topEvents, setTopEvents] = useState<EventStats[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const [dailyResponse, eventsResponse] = await Promise.all([
+        fetch('/api/events?type=daily&days=30'),
+        fetch('/api/events')
+      ]);
+
+      if (!dailyResponse.ok || !eventsResponse.ok) {
+        throw new Error('Failed to fetch analytics data');
+      }
+
+      const dailyData = await dailyResponse.json();
+      const eventsData = await eventsResponse.json();
+
+      setDailyStats(dailyData.reverse()); // Show oldest to newest
+      setTopEvents(eventsData);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-gray-500">Loading analytics...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-red-500">Error: {error}</div>
+      </div>
+    );
+  }
+
+  // Calculate totals for the period
+  const totalNewUsers = dailyStats.reduce((sum, day) => sum + day.newUsers, 0);
+  const totalBookings = dailyStats.reduce((sum, day) => sum + day.bookings, 0);
+  const totalEvents = dailyStats.reduce((sum, day) => sum + day.events, 0);
+  const avgDailyUsers = totalNewUsers / Math.max(dailyStats.length, 1);
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-bold text-gray-900">Analytics</h1>
+        <div className="flex items-center gap-4">
+          <div className="text-sm text-gray-500">
+            Last updated: {new Date().toLocaleTimeString('ru-RU')}
+          </div>
+          <button
+            onClick={fetchData}
+            disabled={loading}
+            className="flex items-center gap-2 px-3 py-1 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </button>
+        </div>
+      </div>
+
+      {/* Summary Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Total New Users (30 days)</p>
+              <p className="text-2xl font-bold text-gray-900 mt-2">{totalNewUsers}</p>
+              <p className="text-xs text-gray-500 mt-1">
+                Avg: {avgDailyUsers.toFixed(1)} per day
+              </p>
+            </div>
+            <div className="p-3 bg-blue-50 rounded-lg">
+              <Users className="h-6 w-6 text-blue-600" />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Total Bookings (30 days)</p>
+              <p className="text-2xl font-bold text-gray-900 mt-2">{totalBookings}</p>
+              <p className="text-xs text-gray-500 mt-1">
+                Avg: {(totalBookings / Math.max(dailyStats.length, 1)).toFixed(1)} per day
+              </p>
+            </div>
+            <div className="p-3 bg-green-50 rounded-lg">
+              <TrendingUp className="h-6 w-6 text-green-600" />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Total Events (30 days)</p>
+              <p className="text-2xl font-bold text-gray-900 mt-2">{totalEvents}</p>
+              <p className="text-xs text-gray-500 mt-1">
+                Avg: {(totalEvents / Math.max(dailyStats.length, 1)).toFixed(1)} per day
+              </p>
+            </div>
+            <div className="p-3 bg-purple-50 rounded-lg">
+              <Activity className="h-6 w-6 text-purple-600" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Charts */}
+      <EventsChart dailyData={dailyStats} topEvents={topEvents} />
+
+      {/* Top Events Table */}
+      {topEvents.length > 0 && (
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+          <div className="p-6 border-b border-gray-200">
+            <h2 className="text-lg font-semibold text-gray-900">Event Details</h2>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Event Type
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Count
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Percentage
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {topEvents.map((event, index) => (
+                  <tr key={event.eventType} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                      {event.eventType}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {event.count}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {((event.count / totalEvents) * 100).toFixed(1)}%
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+</file>
+
+<file path="app/api/bookings/route.ts">
+import { NextResponse } from 'next/server';
+import { getRecentBookings } from '@/lib/queries';
+
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const limit = searchParams.get('limit');
+
+  try {
+    const bookings = await getRecentBookings(limit ? parseInt(limit) : 20);
+    return NextResponse.json(bookings);
+  } catch (error) {
+    console.error('Error fetching bookings:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch bookings' },
+      { status: 500 }
+    );
+  }
+}
+</file>
+
+<file path="app/api/course-streams/route.ts">
+import { NextResponse } from 'next/server';
+import { getCourseStreamStats } from '@/lib/queries';
+
+export async function GET() {
+  try {
+    const courseStreams = await getCourseStreamStats();
+    return NextResponse.json(courseStreams);
+  } catch (error) {
+    console.error('Error fetching course stream stats:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch course stream statistics' },
+      { status: 500 }
+    );
+  }
+}
+</file>
+
+<file path="app/api/courses/route.ts">
+import { NextResponse } from 'next/server';
+import { getCourseStats } from '@/lib/queries';
+
+export async function GET() {
+  try {
+    const courses = await getCourseStats();
+    return NextResponse.json(courses);
+  } catch (error) {
+    console.error('Error fetching course stats:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch course statistics' },
+      { status: 500 }
+    );
+  }
+}
+</file>
+
+<file path="app/api/events/route.ts">
+import { NextResponse } from 'next/server';
+import { getTopEvents, getDailyStats } from '@/lib/queries';
+
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const type = searchParams.get('type');
+  const days = searchParams.get('days');
+
+  try {
+    if (type === 'daily') {
+      const dailyStats = await getDailyStats(days ? parseInt(days) : 30);
+      return NextResponse.json(dailyStats);
+    } else {
+      const topEvents = await getTopEvents(10);
+      return NextResponse.json(topEvents);
+    }
+  } catch (error) {
+    console.error('Error fetching events:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch events' },
+      { status: 500 }
+    );
+  }
+}
+</file>
+
+<file path="app/api/free-lessons/route.ts">
+import { NextResponse, NextRequest } from 'next/server';
+import { getFreeLessonRegistrations } from '@/lib/queries';
+
+export async function GET(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const limit = parseInt(searchParams.get('limit') || '50');
+    
+    const freeLessons = await getFreeLessonRegistrations(limit);
+    
+    return NextResponse.json(freeLessons);
+  } catch (error) {
+    console.error('Failed to fetch free lessons:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch free lessons data' },
+      { status: 500 }
+    );
+  }
+}
+</file>
+
+<file path="app/api/stats/route.ts">
+import { NextResponse } from 'next/server';
+import { getDashboardStats } from '@/lib/queries';
+
+export async function GET() {
+  try {
+    const stats = await getDashboardStats();
+    return NextResponse.json(stats);
+  } catch (error) {
+    console.error('Error fetching dashboard stats:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch dashboard statistics' },
+      { status: 500 }
+    );
+  }
+}
+</file>
+
+<file path="app/api/test-db/route.ts">
+import { NextResponse } from 'next/server';
+import pool from '@/lib/db';
+
+export async function GET() {
+  try {
+    const client = await pool.connect();
+    const result = await client.query('SELECT NOW(), version()');
+    client.release();
+    
+    return NextResponse.json({ 
+      success: true, 
+      timestamp: result.rows[0].now,
+      database_version: result.rows[0].version,
+      message: 'Database connection successful!' 
+    });
+  } catch (error) {
+    console.error('Database connection error:', error);
+    return NextResponse.json({ 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Unknown error'
+    }, { status: 500 });
+  }
+}
+</file>
+
+<file path="app/api/user-growth/route.ts">
+import { NextResponse } from 'next/server';
+import { getUserGrowthData } from '@/lib/queries';
+
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const days = searchParams.get('days');
+
+  try {
+    const userGrowthData = await getUserGrowthData(days ? parseInt(days) : 30);
+    return NextResponse.json(userGrowthData);
+  } catch (error) {
+    console.error('Error fetching user growth data:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch user growth data' },
+      { status: 500 }
+    );
+  }
+}
+</file>
+
+<file path="app/content/page.tsx">
+'use client';
+
+import { useState } from 'react';
+import { Copy, DollarSign, Calendar, CheckCircle, XCircle } from 'lucide-react';
+
+// Course data from constants.py - hardcoded for now
+const COURSES = [
+  {
+    id: 1,
+    name: "Вайб кодинг",
+    button_text: "Вайб-кодинг: реализация продуктовых идей",
+    description: "✌️ ЧЕТВЕРТЫЙ ПОТОК ВАЙБКОДИНГА\n\n\"Я никогда не совалась в программирование. Курс открыл другой мир\" — Радислава\n\"Навайбкодила мужу сайт\" — Настя\n\nНаучитесь создавать сайты, веб-приложения и Telegram-ботов через диалог с AI\n\n+ освоите промпт-инжиниринг и поймёте как устроены современные AI и приложения\n\n🎯 БЕЗ НАВЫКОВ ПРОГРАММИРОВАНИЯ\n\n📚 ФОРМАТ:\n• Видео-уроки + текстовые материалы\n• 3 лайва с практикой\n• Практические домашки с разбором\n• Доступ к материалам навсегда\n\n🛠 ИСПОЛЬЗУЕМ:\nПоследние модели: OpenAI o3, Google Gemini 2.5 Pro, Anthropic Claude Sonnet 4\nВайбкодерские аппы: Cursor, Windsurf, Bolt, Gemini CLI\n\n💰 CORE:\n• Все материалы и записи\n• Закрытый чат с поддержкой\n• Обратная связь по домашкам\n\n📅 Старт: 1 сентября\n⏰ Занятия по средам в 21:00 по мск (каждую неделю)\n\nОплата возможна переводом на карты Т-Банка, Каспи, в песо или USDT на крипто кошелек.",
+    price_usd: 150,
+    price_usd_cents: 15000,
+    is_active: true,
+    start_date_text: "1 сентября",
+  }
+];
+
+export default function ContentPage() {
+  const [copiedField, setCopiedField] = useState<string | null>(null);
+
+  const copyToClipboard = async (text: string, fieldName: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedField(fieldName);
+      setTimeout(() => setCopiedField(null), 2000);
+    } catch (err) {
+      console.error('Failed to copy text: ', err);
+    }
+  };
+
+  const CopyButton = ({ text, fieldName }: { text: string; fieldName: string }) => (
+    <button
+      onClick={() => copyToClipboard(text, fieldName)}
+      className={`ml-2 p-1 rounded transition-colors ${
+        copiedField === fieldName
+          ? 'text-green-600 bg-green-100'
+          : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
+      }`}
+      title="Copy to clipboard"
+    >
+      {copiedField === fieldName ? (
+        <CheckCircle className="h-4 w-4" />
+      ) : (
+        <Copy className="h-4 w-4" />
+      )}
+    </button>
+  );
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-bold text-gray-900">Course Content Management</h1>
+        <div className="text-sm text-gray-500">
+          Source: constants.py
+        </div>
+      </div>
+
+      <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4">
+        <div className="flex">
+          <div className="ml-3">
+            <h3 className="text-sm font-medium text-yellow-800">
+              Note: Read-only content
+            </h3>
+            <div className="mt-2 text-sm text-yellow-700">
+              Course content is managed in the bot's <code className="bg-yellow-200 px-1 py-0.5 rounded text-xs">constants.py</code> file. 
+              Use the copy buttons to quickly grab content for editing.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {COURSES.map((course) => (
+        <div key={course.id} className="bg-white rounded-lg shadow-sm border border-gray-200">
+          <div className="p-6 border-b border-gray-200">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <h2 className="text-lg font-semibold text-gray-900">{course.name}</h2>
+                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                  ID: {course.id}
+                </span>
+                {course.is_active ? (
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                    <CheckCircle className="h-3 w-3 mr-1" />
+                    Active
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                    <XCircle className="h-3 w-3 mr-1" />
+                    Inactive
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center space-x-4 text-sm text-gray-500">
+                <div className="flex items-center">
+                  <DollarSign className="h-4 w-4 mr-1" />
+                  ${course.price_usd}
+                </div>
+                <div className="flex items-center">
+                  <Calendar className="h-4 w-4 mr-1" />
+                  {course.start_date_text}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-6 space-y-6">
+            {/* Button Text */}
+            <div>
+              <div className="flex items-center mb-2">
+                <label className="text-sm font-medium text-gray-700">Button Text</label>
+                <CopyButton text={course.button_text} fieldName={`button-${course.id}`} />
+              </div>
+              <div className="p-3 bg-gray-50 rounded-md text-sm text-gray-900 font-mono">
+                {course.button_text}
+              </div>
+            </div>
+
+            {/* Description */}
+            <div>
+              <div className="flex items-center mb-2">
+                <label className="text-sm font-medium text-gray-700">Description</label>
+                <CopyButton text={course.description} fieldName={`description-${course.id}`} />
+              </div>
+              <div className="p-4 bg-gray-50 rounded-md text-sm text-gray-900 font-mono whitespace-pre-wrap max-h-96 overflow-y-auto">
+                {course.description}
+              </div>
+            </div>
+
+            {/* Pricing Details */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-2 flex items-center">
+                  Price (USD)
+                  <CopyButton text={course.price_usd.toString()} fieldName={`price-usd-${course.id}`} />
+                </label>
+                <div className="p-3 bg-blue-50 rounded-md text-sm text-blue-900 font-mono">
+                  ${course.price_usd}
+                </div>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-2 flex items-center">
+                  Price (Cents)
+                  <CopyButton text={course.price_usd_cents.toString()} fieldName={`price-cents-${course.id}`} />
+                </label>
+                <div className="p-3 bg-blue-50 rounded-md text-sm text-blue-900 font-mono">
+                  {course.price_usd_cents}
+                </div>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700 mb-2 flex items-center">
+                  Start Date
+                  <CopyButton text={course.start_date_text} fieldName={`date-${course.id}`} />
+                </label>
+                <div className="p-3 bg-green-50 rounded-md text-sm text-green-900 font-mono">
+                  {course.start_date_text}
+                </div>
+              </div>
+            </div>
+
+            {/* JSON Structure */}
+            <div>
+              <div className="flex items-center mb-2">
+                <label className="text-sm font-medium text-gray-700">Full JSON Structure</label>
+                <CopyButton text={JSON.stringify(course, null, 2)} fieldName={`json-${course.id}`} />
+              </div>
+              <div className="p-4 bg-gray-900 rounded-md text-sm text-green-400 font-mono whitespace-pre overflow-x-auto max-h-64 overflow-y-auto">
+                {JSON.stringify(course, null, 2)}
+              </div>
+            </div>
+          </div>
+        </div>
+      ))}
+
+      <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
+        <div className="flex">
+          <div className="ml-3">
+            <h3 className="text-sm font-medium text-blue-800">
+              How to update course content
+            </h3>
+            <div className="mt-2 text-sm text-blue-700 space-y-2">
+              <p>1. Copy the desired content using the copy buttons above</p>
+              <p>2. Edit the <code className="bg-blue-200 px-1 py-0.5 rounded text-xs">constants.py</code> file in your bot project</p>
+              <p>3. Update the COURSES array with your changes</p>
+              <p>4. Restart the bot to apply changes</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+</file>
+
+<file path="app/free-lessons/page.tsx">
+'use client';
+
+import { useEffect, useState } from 'react';
+import FreeLessonsTable from '@/components/FreeLessonsTable';
+import MetricCard from '@/components/MetricCard';
+import { GraduationCap, Users, Calendar, RefreshCw } from 'lucide-react';
+
+interface FreeLessonRegistration {
+  id: number;
+  user_id: number;
+  username: string;
+  first_name: string;
+  email: string;
+  registered_at: string;
+  notification_sent: boolean;
+  lesson_type: string;
+}
+
+export default function FreeLessonsPage() {
+  const [registrations, setRegistrations] = useState<FreeLessonRegistration[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const response = await fetch('/api/free-lessons?limit=100');
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch free lessons data');
+      }
+
+      const data = await response.json();
+      setRegistrations(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  if (loading && registrations.length === 0) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-gray-500">Loading free lessons data...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-red-500">Error: {error}</div>
+      </div>
+    );
+  }
+
+  // Calculate statistics
+  const totalRegistrations = registrations.length;
+  const uniqueUsers = new Set(registrations.map(r => r.user_id)).size;
+  const notificationsSent = registrations.filter(r => r.notification_sent).length;
+  const lessonTypeStats = registrations.reduce((acc, reg) => {
+    const lessonType = reg.lesson_type || 'Unknown';
+    acc[lessonType] = (acc[lessonType] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
+  
+  const mostPopularLessonType = Object.entries(lessonTypeStats).length > 0 
+    ? Object.entries(lessonTypeStats).sort(([,a], [,b]) => b - a)[0] 
+    : null;
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-bold text-gray-900">Free Lesson Registrations</h1>
+        <div className="flex items-center gap-4">
+          <div className="text-sm text-gray-500">
+            Last updated: {new Date().toLocaleTimeString('ru-RU')}
+          </div>
+          <button
+            onClick={fetchData}
+            disabled={loading}
+            className="flex items-center gap-2 px-3 py-1 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </button>
+        </div>
+      </div>
+
+      {/* Statistics Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <MetricCard
+          title="Total Registrations"
+          value={totalRegistrations}
+          icon={GraduationCap}
+          description="All free lesson sign-ups"
+        />
+        <MetricCard
+          title="Unique Users"
+          value={uniqueUsers}
+          icon={Users}
+          description="Individual users registered"
+        />
+        <MetricCard
+          title="Notifications Sent"
+          value={notificationsSent}
+          icon={Calendar}
+          description="Users who received notifications"
+        />
+        <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-gray-600">Most Popular</p>
+              <p className="text-2xl font-bold text-gray-900 mt-2">
+                {mostPopularLessonType ? mostPopularLessonType[1] : 0}
+              </p>
+              <p className="text-xs text-gray-500 mt-1">
+                {mostPopularLessonType ? mostPopularLessonType[0] : 'No data'}
+              </p>
+            </div>
+            <div className="p-3 bg-purple-50 rounded-lg">
+              <GraduationCap className="h-6 w-6 text-purple-600" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Lesson Type Statistics */}
+      {Object.keys(lessonTypeStats).length > 0 && (
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+          <div className="p-6 border-b border-gray-200">
+            <h2 className="text-lg font-semibold text-gray-900">Lesson Type Breakdown</h2>
+          </div>
+          <div className="p-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {Object.entries(lessonTypeStats)
+                .sort(([,a], [,b]) => b - a)
+                .map(([lessonType, count]) => (
+                  <div key={lessonType} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
+                    <span className="font-medium text-gray-900">{lessonType}</span>
+                    <span className="text-lg font-bold text-blue-600">{count}</span>
+                  </div>
+                ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Registrations Table */}
+      <FreeLessonsTable registrations={registrations} />
+    </div>
+  );
+}
+</file>
+
+<file path="app/workshops/page.tsx">
+'use client';
+
+import { useEffect, useState } from 'react';
+import BookingsTable from '@/components/BookingsTable';
+import MetricCard from '@/components/MetricCard';
+import { Calendar, Users, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
+
+interface CourseStats {
+  courseId: number;
+  courseName: string;
+  total: number;
+  confirmed: number;
+  pending: number;
+  cancelled: number;
+}
+
+interface CourseStreamStats {
+  courseId: number;
+  courseName: string;
+  courseStream: string;
+  total: number;
+  confirmed: number;
+  pending: number;
+  cancelled: number;
+}
+
+interface Booking {
+  id: number;
+  user_id: number;
+  username: string;
+  first_name: string;
+  course_id: number;
+  course_stream: string;
+  confirmed: number;
+  created_at: string;
+  referral_code: string;
+  discount_percent: number;
+}
+
+export default function WorkshopsPage() {
+  const [courseStats, setCourseStats] = useState<CourseStats[]>([]);
+  const [courseStreamStats, setCourseStreamStats] = useState<CourseStreamStats[]>([]);
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const [courseResponse, courseStreamResponse, bookingsResponse] = await Promise.all([
+        fetch('/api/courses'),
+        fetch('/api/course-streams'),
+        fetch('/api/bookings?limit=50')
+      ]);
+
+      if (!courseResponse.ok || !courseStreamResponse.ok || !bookingsResponse.ok) {
+        throw new Error('Failed to fetch data');
+      }
+
+      const courseData = await courseResponse.json();
+      const courseStreamData = await courseStreamResponse.json();
+      const bookingsData = await bookingsResponse.json();
+
+      setCourseStats(courseData);
+      setCourseStreamStats(courseStreamData);
+      setBookings(bookingsData);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-gray-500">Загружаем данные курсов...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-red-500">Error: {error}</div>
+      </div>
+    );
+  }
+
+  const totalStats = courseStats.reduce(
+    (acc, course) => ({
+      total: acc.total + course.total,
+      confirmed: acc.confirmed + course.confirmed,
+      pending: acc.pending + course.pending,
+      cancelled: acc.cancelled + course.cancelled
+    }),
+    { total: 0, confirmed: 0, pending: 0, cancelled: 0 }
+  );
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-bold text-gray-900">Аналитика курсов</h1>
+        <div className="flex items-center gap-4">
+          <div className="text-sm text-gray-500">
+            Last updated: {new Date().toLocaleTimeString('ru-RU')}
+          </div>
+          <button
+            onClick={fetchData}
+            disabled={loading}
+            className="flex items-center gap-2 px-3 py-1 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </button>
+        </div>
+      </div>
+
+      {/* Stream Overview */}
+      {courseStreamStats.length > 0 && (
+        <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Активные потоки</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {courseStreamStats.map((stream) => (
+              <div key={`${stream.courseId}-${stream.courseStream}`} className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
+                <div>
+                  <h3 className="font-medium text-gray-900">{stream.courseName}</h3>
+                  <p className="text-sm text-gray-600">{stream.courseStream}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-2xl font-bold text-blue-600">{stream.total}</p>
+                  <p className="text-xs text-gray-500">студентов</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Overall Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <MetricCard
+          title="Total Registrations"
+          value={totalStats.total}
+          icon={Calendar}
+          description="All course registrations"
+        />
+        <MetricCard
+          title="Confirmed"
+          value={totalStats.confirmed}
+          icon={CheckCircle}
+          description="Paid and confirmed"
+        />
+        <MetricCard
+          title="Pending"
+          value={totalStats.pending}
+          icon={Users}
+          description="Awaiting payment confirmation"
+        />
+        <MetricCard
+          title="Cancelled"
+          value={totalStats.cancelled}
+          icon={XCircle}
+          description="Cancelled registrations"
+        />
+      </div>
+
+
+      {/* Course Statistics by Streams */}
+      {courseStreamStats.length > 0 && (
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+          <div className="p-6 border-b border-gray-200">
+            <h2 className="text-lg font-semibold text-gray-900">Статистика курсов по потокам</h2>
+            <p className="text-sm text-gray-600 mt-1">Детальная информация о каждом потоке</p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Курс
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Поток
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Всего
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Подтверждено
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    В ожидании
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Отменено
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Конверсия
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {courseStreamStats.map((stream, index) => (
+                  <tr key={`${stream.courseId}-${stream.courseStream}`} className="hover:bg-gray-50">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm font-medium text-gray-900">
+                        {stream.courseName}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                        {stream.courseStream}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {stream.total}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                        {stream.confirmed}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
+                        {stream.pending}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
+                        {stream.cancelled}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      {stream.total > 0 
+                        ? `${Math.round((stream.confirmed / stream.total) * 100)}%`
+                        : '0%'
+                      }
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Recent Bookings Table */}
+      <BookingsTable bookings={bookings} />
+    </div>
+  );
+}
+</file>
+
+<file path="app/globals.css">
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+</file>
+
+<file path="components/BookingsTable.tsx">
+'use client';
+
+import { useState } from 'react';
+
+interface Booking {
+  id: number;
+  user_id: number;
+  username: string;
+  first_name: string;
+  course_id: number;
+  course_stream: string;
+  confirmed: number;
+  created_at: string;
+  referral_code: string;
+  discount_percent: number;
+}
+
+interface BookingsTableProps {
+  bookings: Booking[];
+}
+
+const getStatusBadge = (confirmed: number) => {
+  switch (confirmed) {
+    case 2:
+      return (
+        <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+          Confirmed
+        </span>
+      );
+    case 1:
+      return (
+        <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
+          Pending
+        </span>
+      );
+    case -1:
+      return (
+        <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
+          Cancelled
+        </span>
+      );
+    default:
+      return (
+        <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">
+          Unknown
+        </span>
+      );
+  }
+};
+
+const getCourseNameById = (courseId: number) => {
+  const courseNames: { [key: number]: string } = {
+    1: 'Вайб кодинг',
+    2: 'Вайб кодинг EXTRA'
+  };
+  return courseNames[courseId] || `Course ${courseId}`;
+};
+
+export default function BookingsTable({ bookings }: BookingsTableProps) {
+  const [filter, setFilter] = useState<'all' | 'confirmed' | 'pending' | 'cancelled'>('all');
+
+  const filteredBookings = bookings.filter(booking => {
+    if (filter === 'all') return true;
+    if (filter === 'confirmed') return booking.confirmed === 2;
+    if (filter === 'pending') return booking.confirmed === 1;
+    if (filter === 'cancelled') return booking.confirmed === -1;
+    return true;
+  });
+
+  return (
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+      <div className="p-6 border-b border-gray-200">
+        <div className="flex justify-between items-center">
+          <h2 className="text-lg font-semibold text-gray-900">Recent Bookings</h2>
+          <div className="flex space-x-2">
+            {['all', 'confirmed', 'pending', 'cancelled'].map((status) => (
+              <button
+                key={status}
+                onClick={() => setFilter(status as any)}
+                className={`px-3 py-1 text-sm font-medium rounded-md ${
+                  filter === status
+                    ? 'bg-blue-100 text-blue-700'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                {status.charAt(0).toUpperCase() + status.slice(1)}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                User
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Course
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Stream
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Status
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Discount
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Date
+              </th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {filteredBookings.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="px-6 py-4 text-center text-gray-500">
+                  No bookings found
+                </td>
+              </tr>
+            ) : (
+              filteredBookings.map((booking) => (
+                <tr key={booking.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex flex-col">
+                      <div className="text-sm font-medium text-gray-900">
+                        {booking.first_name || 'Unknown'}
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        @{booking.username || 'no_username'}
+                      </div>
+                      <div className="text-xs text-gray-400">
+                        ID: {booking.user_id}
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900">
+                      {getCourseNameById(booking.course_id)}
+                    </div>
+                    <div className="text-sm text-gray-500">
+                      ID: {booking.course_id}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                      {booking.course_stream === '3rd_stream' ? '3-й поток' : 
+                       booking.course_stream === '4th_stream' ? '4-й поток' : 
+                       booking.course_stream || 'N/A'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {getStatusBadge(booking.confirmed)}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {booking.discount_percent > 0 ? (
+                      <div className="flex flex-col">
+                        <span className="text-sm font-medium text-green-600">
+                          -{booking.discount_percent}%
+                        </span>
+                        {booking.referral_code && (
+                          <span className="text-xs text-gray-500">
+                            {booking.referral_code}
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-sm text-gray-500">No discount</span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {new Date(booking.created_at).toLocaleDateString('ru-RU', {
+                      day: '2-digit',
+                      month: '2-digit',
+                      year: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="px-6 py-3 bg-gray-50 border-t border-gray-200">
+        <div className="text-sm text-gray-500">
+          Showing {filteredBookings.length} of {bookings.length} bookings
+        </div>
+      </div>
+    </div>
+  );
+}
+</file>
+
+<file path="components/EventsChart.tsx">
+'use client';
+
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
+
+interface DailyStats {
+  date: string;
+  newUsers: number;
+  bookings: number;
+  events: number;
+}
+
+interface EventStats {
+  eventType: string;
+  count: number;
+}
+
+interface EventsChartProps {
+  dailyData: DailyStats[];
+  topEvents: EventStats[];
+}
+
+export default function EventsChart({ dailyData, topEvents }: EventsChartProps) {
+  // Format dates for better display
+  const formattedDailyData = dailyData.map(item => ({
+    ...item,
+    date: new Date(item.date).toLocaleDateString('ru-RU', { 
+      month: 'short', 
+      day: 'numeric' 
+    })
+  }));
+
+  return (
+    <div className="space-y-6">
+      {/* Daily Activity Chart */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Daily Activity (Last 30 Days)</h3>
+        <div className="h-80">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={formattedDailyData}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <XAxis 
+                dataKey="date" 
+                stroke="#6b7280"
+                fontSize={12}
+              />
+              <YAxis stroke="#6b7280" fontSize={12} />
+              <Tooltip 
+                contentStyle={{
+                  backgroundColor: 'white',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '6px',
+                  boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
+                }}
+              />
+              <Line 
+                type="monotone" 
+                dataKey="newUsers" 
+                stroke="#3b82f6" 
+                strokeWidth={2}
+                name="New Users"
+                dot={{ fill: '#3b82f6', strokeWidth: 2, r: 4 }}
+              />
+              <Line 
+                type="monotone" 
+                dataKey="bookings" 
+                stroke="#10b981" 
+                strokeWidth={2}
+                name="Bookings"
+                dot={{ fill: '#10b981', strokeWidth: 2, r: 4 }}
+              />
+              <Line 
+                type="monotone" 
+                dataKey="events" 
+                stroke="#f59e0b" 
+                strokeWidth={2}
+                name="Events"
+                dot={{ fill: '#f59e0b', strokeWidth: 2, r: 4 }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* Top Events Chart */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Most Frequent User Actions</h3>
+        <div className="h-80">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={topEvents.slice(0, 8)} layout="horizontal">
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <XAxis type="number" stroke="#6b7280" fontSize={12} />
+              <YAxis 
+                dataKey="eventType" 
+                type="category" 
+                stroke="#6b7280" 
+                fontSize={12}
+                width={100}
+              />
+              <Tooltip 
+                contentStyle={{
+                  backgroundColor: 'white',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '6px',
+                  boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
+                }}
+              />
+              <Bar 
+                dataKey="count" 
+                fill="#6366f1"
+                radius={[0, 4, 4, 0]}
+              />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+    </div>
+  );
+}
+</file>
+
+<file path="components/FreeLessonsTable.tsx">
+'use client';
+
+import { useState } from 'react';
+import { format } from 'date-fns';
+
+interface FreeLessonRegistration {
+  id: number;
+  user_id: number;
+  username: string;
+  first_name: string;
+  email: string;
+  registered_at: string;
+  notification_sent: boolean;
+  lesson_type: string;
+}
+
+interface FreeLessonsTableProps {
+  registrations: FreeLessonRegistration[];
+}
+
+export default function FreeLessonsTable({ registrations }: FreeLessonsTableProps) {
+  const [filter, setFilter] = useState('');
+
+  const filteredRegistrations = registrations.filter((registration) => {
+    const searchTerm = filter.toLowerCase();
+    return (
+      registration.username?.toLowerCase().includes(searchTerm) ||
+      registration.first_name?.toLowerCase().includes(searchTerm) ||
+      registration.email?.toLowerCase().includes(searchTerm) ||
+      registration.lesson_type?.toLowerCase().includes(searchTerm)
+    );
+  });
+
+  const formatDate = (dateString: string) => {
+    try {
+      return format(new Date(dateString), 'dd.MM.yyyy HH:mm');
+    } catch {
+      return dateString;
+    }
+  };
+
+  const exportToCSV = () => {
+    const headers = ['ID', 'User ID', 'Username', 'First Name', 'Email', 'Lesson Type', 'Registration Date', 'Notification Sent'];
+    const csvContent = [
+      headers.join(','),
+      ...filteredRegistrations.map(reg => [
+        reg.id,
+        reg.user_id,
+        `"${reg.username || ''}"`,
+        `"${reg.first_name || ''}"`,
+        `"${reg.email || ''}"`,
+        `"${reg.lesson_type || ''}"`,
+        formatDate(reg.registered_at),
+        reg.notification_sent ? 'Yes' : 'No'
+      ].join(','))
+    ].join('\\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `free-lessons-${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+  };
+
+  if (registrations.length === 0) {
+    return (
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
+        <div className="text-center text-gray-500">
+          <p className="text-lg">No free lesson registrations found</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200">
+      <div className="p-6 border-b border-gray-200">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-semibold text-gray-900">Free Lesson Registrations</h2>
+            <p className="text-sm text-gray-600 mt-1">
+              Total: {registrations.length} registrations
+              {filter && ` • Filtered: ${filteredRegistrations.length}`}
+            </p>
+          </div>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <input
+              type="text"
+              placeholder="Search by name, email, or lesson type..."
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <button
+              onClick={exportToCSV}
+              className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm font-medium"
+            >
+              Export CSV
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                User
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Email
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Lesson Type
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Registration Date
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Notification
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                User ID
+              </th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {filteredRegistrations.map((registration, index) => (
+              <tr key={registration.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="flex flex-col">
+                    <div className="text-sm font-medium text-gray-900">
+                      {registration.first_name || 'N/A'}
+                    </div>
+                    <div className="text-sm text-gray-500">
+                      @{registration.username || 'N/A'}
+                    </div>
+                  </div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  {registration.email}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                    {registration.lesson_type}
+                  </span>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  {formatDate(registration.registered_at)}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  {registration.notification_sent ? (
+                    <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                      Sent
+                    </span>
+                  ) : (
+                    <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
+                      Not sent
+                    </span>
+                  )}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  {registration.user_id}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {filteredRegistrations.length === 0 && filter && (
+        <div className="p-8 text-center">
+          <p className="text-gray-500">No registrations match your search criteria.</p>
+          <button
+            onClick={() => setFilter('')}
+            className="mt-2 text-blue-600 hover:text-blue-800 text-sm"
+          >
+            Clear filter
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+</file>
+
+<file path="components/MetricCard.tsx">
+import { LucideIcon } from 'lucide-react';
+
+interface MetricCardProps {
+  title: string;
+  value: number | string;
+  icon: LucideIcon;
+  description?: string;
+  trend?: {
+    value: number;
+    isPositive: boolean;
+  };
+}
+
+export default function MetricCard({ 
+  title, 
+  value, 
+  icon: Icon, 
+  description,
+  trend 
+}: MetricCardProps) {
+  return (
+    <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
+      <div className="flex items-center justify-between">
+        <div className="flex-1">
+          <p className="text-sm font-medium text-gray-600">{title}</p>
+          <p className="text-2xl font-bold text-gray-900 mt-2">{value}</p>
+          {description && (
+            <p className="text-xs text-gray-500 mt-1">{description}</p>
+          )}
+          {trend && (
+            <div className="flex items-center mt-2">
+              <span className={`text-sm font-medium ${
+                trend.isPositive ? 'text-green-600' : 'text-red-600'
+              }`}>
+                {trend.isPositive ? '↑' : '↓'} {Math.abs(trend.value)}%
+              </span>
+              <span className="text-xs text-gray-500 ml-2">vs last period</span>
+            </div>
+          )}
+        </div>
+        <div className="ml-4">
+          <div className="p-3 bg-blue-50 rounded-lg">
+            <Icon className="h-6 w-6 text-blue-600" />
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+</file>
+
+<file path="components/Navigation.tsx">
+'use client';
+
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { 
+  LayoutDashboard, 
+  Calendar, 
+  BarChart3, 
+  FileText,
+  Users,
+  GraduationCap
+} from 'lucide-react';
+
+const navigation = [
+  { name: 'Overview', href: '/', icon: LayoutDashboard },
+  { name: 'Курсы', href: '/workshops', icon: Calendar },
+  { name: 'Free Lessons', href: '/free-lessons', icon: GraduationCap },
+  { name: 'Analytics', href: '/analytics', icon: BarChart3 },
+  { name: 'Content', href: '/content', icon: FileText },
+];
+
+export default function Navigation() {
+  const pathname = usePathname();
+
+  return (
+    <nav className="bg-white shadow-sm border-b border-gray-200">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between h-16">
+          <div className="flex">
+            <div className="flex-shrink-0 flex items-center">
+              <h1 className="text-xl font-bold text-gray-900">HSL Dashboard</h1>
+            </div>
+            <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
+              {navigation.map((item) => {
+                const Icon = item.icon;
+                const isActive = pathname === item.href;
+                return (
+                  <Link
+                    key={item.name}
+                    href={item.href}
+                    className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
+                      isActive
+                        ? 'border-blue-500 text-gray-900'
+                        : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                    }`}
+                  >
+                    <Icon className="h-4 w-4 mr-2" />
+                    {item.name}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </div>
+    </nav>
+  );
+}
+</file>
+
+<file path="components/UserGrowthChart.tsx">
+'use client';
+
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+
+interface UserGrowthData {
+  date: string;
+  totalUsers: number;
+  newUsers: number;
+}
+
+interface UserGrowthChartProps {
+  data: UserGrowthData[];
+}
+
+export default function UserGrowthChart({ data }: UserGrowthChartProps) {
+  // Format dates for better display
+  const formattedData = data.map(item => ({
+    ...item,
+    date: new Date(item.date).toLocaleDateString('ru-RU', { 
+      month: 'short', 
+      day: 'numeric' 
+    })
+  }));
+
+  return (
+    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+      <h2 className="text-lg font-semibold text-gray-900 mb-4">Рост пользователей бота</h2>
+      <div className="h-80">
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={formattedData}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+            <XAxis 
+              dataKey="date" 
+              stroke="#6b7280"
+              fontSize={12}
+            />
+            <YAxis stroke="#6b7280" fontSize={12} />
+            <Tooltip 
+              contentStyle={{
+                backgroundColor: 'white',
+                border: '1px solid #e5e7eb',
+                borderRadius: '6px',
+                boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
+              }}
+              formatter={(value, name) => [
+                value,
+                name === 'totalUsers' ? 'Всего пользователей' : 'Новые пользователи'
+              ]}
+              labelFormatter={(label) => `Дата: ${label}`}
+            />
+            <Line 
+              type="monotone" 
+              dataKey="totalUsers" 
+              stroke="#3b82f6" 
+              strokeWidth={3}
+              name="totalUsers"
+              dot={{ fill: '#3b82f6', strokeWidth: 2, r: 4 }}
+            />
+            <Line 
+              type="monotone" 
+              dataKey="newUsers" 
+              stroke="#10b981" 
+              strokeWidth={2}
+              name="newUsers"
+              dot={{ fill: '#10b981', strokeWidth: 2, r: 3 }}
+            />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+      <div className="mt-4 flex items-center gap-6 text-sm">
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+          <span className="text-gray-600">Всего пользователей</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+          <span className="text-gray-600">Новые пользователи в день</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+</file>
+
+<file path="lib/db.ts">
+import { Pool } from 'pg';
+
+if (!process.env.POSTGRES_HOST || !process.env.POSTGRES_PASSWORD) {
+  throw new Error('Missing required database environment variables: POSTGRES_HOST and POSTGRES_PASSWORD must be set');
+}
+
+const pool = new Pool({
+  host: process.env.POSTGRES_HOST,
+  port: parseInt(process.env.POSTGRES_PORT || '5432'),
+  database: process.env.POSTGRES_DB || 'railway',
+  user: process.env.POSTGRES_USER || 'postgres',
+  password: process.env.POSTGRES_PASSWORD,
+  ssl: {
+    rejectUnauthorized: false
+  }
+});
+
+export default pool;
+</file>
+
+<file path="public/file.svg">
+<svg fill="none" viewBox="0 0 16 16" xmlns="http://www.w3.org/2000/svg"><path d="M14.5 13.5V5.41a1 1 0 0 0-.3-.7L9.8.29A1 1 0 0 0 9.08 0H1.5v13.5A2.5 2.5 0 0 0 4 16h8a2.5 2.5 0 0 0 2.5-2.5m-1.5 0v-7H8v-5H3v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1M9.5 5V2.12L12.38 5zM5.13 5h-.62v1.25h2.12V5zm-.62 3h7.12v1.25H4.5zm.62 3h-.62v1.25h7.12V11z" clip-rule="evenodd" fill="#666" fill-rule="evenodd"/></svg>
+</file>
+
+<file path="public/globe.svg">
+<svg fill="none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><g clip-path="url(#a)"><path fill-rule="evenodd" clip-rule="evenodd" d="M10.27 14.1a6.5 6.5 0 0 0 3.67-3.45q-1.24.21-2.7.34-.31 1.83-.97 3.1M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16m.48-1.52a7 7 0 0 1-.96 0H7.5a4 4 0 0 1-.84-1.32q-.38-.89-.63-2.08a40 40 0 0 0 3.92 0q-.25 1.2-.63 2.08a4 4 0 0 1-.84 1.31zm2.94-4.76q1.66-.15 2.95-.43a7 7 0 0 0 0-2.58q-1.3-.27-2.95-.43a18 18 0 0 1 0 3.44m-1.27-3.54a17 17 0 0 1 0 3.64 39 39 0 0 1-4.3 0 17 17 0 0 1 0-3.64 39 39 0 0 1 4.3 0m1.1-1.17q1.45.13 2.69.34a6.5 6.5 0 0 0-3.67-3.44q.65 1.26.98 3.1M8.48 1.5l.01.02q.41.37.84 1.31.38.89.63 2.08a40 40 0 0 0-3.92 0q.25-1.2.63-2.08a4 4 0 0 1 .85-1.32 7 7 0 0 1 .96 0m-2.75.4a6.5 6.5 0 0 0-3.67 3.44 29 29 0 0 1 2.7-.34q.31-1.83.97-3.1M4.58 6.28q-1.66.16-2.95.43a7 7 0 0 0 0 2.58q1.3.27 2.95.43a18 18 0 0 1 0-3.44m.17 4.71q-1.45-.12-2.69-.34a6.5 6.5 0 0 0 3.67 3.44q-.65-1.27-.98-3.1" fill="#666"/></g><defs><clipPath id="a"><path fill="#fff" d="M0 0h16v16H0z"/></clipPath></defs></svg>
+</file>
+
+<file path="public/next.svg">
+<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 394 80"><path fill="#000" d="M262 0h68.5v12.7h-27.2v66.6h-13.6V12.7H262V0ZM149 0v12.7H94v20.4h44.3v12.6H94v21h55v12.6H80.5V0h68.7zm34.3 0h-17.8l63.8 79.4h17.9l-32-39.7 32-39.6h-17.9l-23 28.6-23-28.6zm18.3 56.7-9-11-27.1 33.7h17.8l18.3-22.7z"/><path fill="#000" d="M81 79.3 17 0H0v79.3h13.6V17l50.2 62.3H81Zm252.6-.4c-1 0-1.8-.4-2.5-1s-1.1-1.6-1.1-2.6.3-1.8 1-2.5 1.6-1 2.6-1 1.8.3 2.5 1a3.4 3.4 0 0 1 .6 4.3 3.7 3.7 0 0 1-3 1.8zm23.2-33.5h6v23.3c0 2.1-.4 4-1.3 5.5a9.1 9.1 0 0 1-3.8 3.5c-1.6.8-3.5 1.3-5.7 1.3-2 0-3.7-.4-5.3-1s-2.8-1.8-3.7-3.2c-.9-1.3-1.4-3-1.4-5h6c.1.8.3 1.6.7 2.2s1 1.2 1.6 1.5c.7.4 1.5.5 2.4.5 1 0 1.8-.2 2.4-.6a4 4 0 0 0 1.6-1.8c.3-.8.5-1.8.5-3V45.5zm30.9 9.1a4.4 4.4 0 0 0-2-3.3 7.5 7.5 0 0 0-4.3-1.1c-1.3 0-2.4.2-3.3.5-.9.4-1.6 1-2 1.6a3.5 3.5 0 0 0-.3 4c.3.5.7.9 1.3 1.2l1.8 1 2 .5 3.2.8c1.3.3 2.5.7 3.7 1.2a13 13 0 0 1 3.2 1.8 8.1 8.1 0 0 1 3 6.5c0 2-.5 3.7-1.5 5.1a10 10 0 0 1-4.4 3.5c-1.8.8-4.1 1.2-6.8 1.2-2.6 0-4.9-.4-6.8-1.2-2-.8-3.4-2-4.5-3.5a10 10 0 0 1-1.7-5.6h6a5 5 0 0 0 3.5 4.6c1 .4 2.2.6 3.4.6 1.3 0 2.5-.2 3.5-.6 1-.4 1.8-1 2.4-1.7a4 4 0 0 0 .8-2.4c0-.9-.2-1.6-.7-2.2a11 11 0 0 0-2.1-1.4l-3.2-1-3.8-1c-2.8-.7-5-1.7-6.6-3.2a7.2 7.2 0 0 1-2.4-5.7 8 8 0 0 1 1.7-5 10 10 0 0 1 4.3-3.5c2-.8 4-1.2 6.4-1.2 2.3 0 4.4.4 6.2 1.2 1.8.8 3.2 2 4.3 3.4 1 1.4 1.5 3 1.5 5h-5.8z"/></svg>
+</file>
+
+<file path="public/vercel.svg">
+<svg fill="none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1155 1000"><path d="m577.3 0 577.4 1000H0z" fill="#fff"/></svg>
+</file>
+
+<file path="public/window.svg">
+<svg fill="none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path fill-rule="evenodd" clip-rule="evenodd" d="M1.5 2.5h13v10a1 1 0 0 1-1 1h-11a1 1 0 0 1-1-1zM0 1h16v11.5a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 0 12.5zm3.75 4.5a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5M7 4.75a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0m1.75.75a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5" fill="#666"/></svg>
+</file>
+
+<file path=".gitignore">
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
+.DS_Store
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# env files (can opt-in for committing if needed)
+.env*
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts
+</file>
+
+<file path="CLAUDE.local.md">
+- используй railway mcp для получения актуальной схемы даных
+</file>
+
+<file path="next.config.ts">
+import type { NextConfig } from "next";
+
+const nextConfig: NextConfig = {
+  /* config options here */
+};
+
+export default nextConfig;
+</file>
+
+<file path="postcss.config.mjs">
+const config = {
+  plugins: ["@tailwindcss/postcss"],
+};
+
+export default config;
+</file>
+
+<file path="tsconfig.json">
+{
+  "compilerOptions": {
+    "target": "ES2017",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "allowJs": true,
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "paths": {
+      "@/*": ["./*"]
+    }
+  },
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+  "exclude": ["node_modules"]
+}
+</file>
+
+<file path=".claude/settings.local.json">
+{
+  "permissions": {
+    "allow": [
+      "mcp__railway-mcp-server__check-railway-status",
+      "mcp__railway-mcp-server__list-projects",
+      "mcp__railway-mcp-server__list-services",
+      "Bash(railway link:*)",
+      "Bash(railway status:*)",
+      "Bash(railway connect:*)",
+      "mcp__railway-mcp-server__list-variables",
+      "mcp__railway-mcp-server__link-service",
+      "Bash(psql:*)",
+      "Bash(git init:*)",
+      "Bash(git add:*)",
+      "Bash(git remote add:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
+</file>
+
+<file path="app/layout.tsx">
+import type { Metadata } from "next";
+import { Inter } from "next/font/google";
+import "./globals.css";
+import Navigation from "@/components/Navigation";
+
+const inter = Inter({ subsets: ["latin"] });
+
+export const metadata: Metadata = {
+  title: "HSL Bot Dashboard",
+  description: "Dashboard for HashSlash School Telegram Bot",
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html lang="en">
+      <body className={`${inter.className} bg-gray-50`}>
+        <Navigation />
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          {children}
+        </main>
+      </body>
+    </html>
+  );
+}
+</file>
+
+<file path="lib/queries.ts">
+import pool from './db';
+
+export interface DashboardStats {
+  totalUsers: number;
+  activeBookings: number;
+  confirmedPayments: number;
+  freeLessonRegistrations: number;
+}
+
+export interface CourseStats {
+  courseId: number;
+  courseName: string;
+  total: number;
+  confirmed: number;
+  pending: number;
+  cancelled: number;
+}
+
+export interface CourseStreamStats {
+  courseId: number;
+  courseName: string;
+  courseStream: string;
+  total: number;
+  confirmed: number;
+  pending: number;
+  cancelled: number;
+}
+
+export interface EventStats {
+  eventType: string;
+  count: number;
+}
+
+export interface FreeLessonRegistration {
+  id: number;
+  user_id: number;
+  username: string;
+  first_name: string;
+  email: string;
+  registered_at: string;
+  notification_sent: boolean;
+  lesson_type: string;
+}
+
+export interface DailyStats {
+  date: string;
+  newUsers: number;
+  bookings: number;
+  events: number;
+}
+
+export interface UserGrowthData {
+  date: string;
+  totalUsers: number;
+  newUsers: number;
+}
+
+// Get overall dashboard statistics
+export async function getDashboardStats(): Promise<DashboardStats> {
+  const client = await pool.connect();
+  try {
+    // Total unique users
+    const usersResult = await client.query(`
+      SELECT COUNT(DISTINCT user_id) as count FROM (
+        SELECT user_id FROM bookings
+        UNION
+        SELECT user_id FROM events
+        UNION
+        SELECT user_id FROM free_lesson_registrations
+      ) AS all_users
+    `);
+
+    // Active bookings (not cancelled)
+    const activeBookingsResult = await client.query(`
+      SELECT COUNT(*) as count FROM bookings WHERE confirmed != -1
+    `);
+
+    // Confirmed payments
+    const confirmedPaymentsResult = await client.query(`
+      SELECT COUNT(*) as count FROM bookings WHERE confirmed = 2
+    `);
+
+    // Free lesson registrations
+    const freeLessonResult = await client.query(`
+      SELECT COUNT(*) as count FROM free_lesson_registrations
+    `);
+
+    return {
+      totalUsers: parseInt(usersResult.rows[0]?.count || '0'),
+      activeBookings: parseInt(activeBookingsResult.rows[0]?.count || '0'),
+      confirmedPayments: parseInt(confirmedPaymentsResult.rows[0]?.count || '0'),
+      freeLessonRegistrations: parseInt(freeLessonResult.rows[0]?.count || '0')
+    };
+  } finally {
+    client.release();
+  }
+}
+
+// Get statistics by course
+export async function getCourseStats(): Promise<CourseStats[]> {
+  const client = await pool.connect();
+  try {
+    const result = await client.query(`
+      SELECT 
+        course_id,
+        COUNT(*) as total,
+        SUM(CASE WHEN confirmed = 2 THEN 1 ELSE 0 END) as confirmed,
+        SUM(CASE WHEN confirmed = 1 THEN 1 ELSE 0 END) as pending,
+        SUM(CASE WHEN confirmed = -1 THEN 1 ELSE 0 END) as cancelled
+      FROM bookings
+      WHERE course_id = 1
+      GROUP BY course_id
+      ORDER BY course_id
+    `);
+
+    // Map course IDs to names (only show active courses)
+    const courseNames: { [key: number]: string } = {
+      1: 'Вайб кодинг'
+    };
+
+    return result.rows.map(row => ({
+      courseId: row.course_id,
+      courseName: courseNames[row.course_id] || `Course ${row.course_id}`,
+      total: parseInt(row.total),
+      confirmed: parseInt(row.confirmed),
+      pending: parseInt(row.pending),
+      cancelled: parseInt(row.cancelled)
+    }));
+  } finally {
+    client.release();
+  }
+}
+
+// Get detailed statistics by course and stream
+export async function getCourseStreamStats(): Promise<CourseStreamStats[]> {
+  const client = await pool.connect();
+  try {
+    const result = await client.query(`
+      SELECT 
+        course_id,
+        course_stream,
+        COUNT(*) as total,
+        SUM(CASE WHEN confirmed = 2 THEN 1 ELSE 0 END) as confirmed,
+        SUM(CASE WHEN confirmed = 1 THEN 1 ELSE 0 END) as pending,
+        SUM(CASE WHEN confirmed = -1 THEN 1 ELSE 0 END) as cancelled
+      FROM bookings
+      WHERE course_id = 1 AND course_stream IS NOT NULL
+      GROUP BY course_id, course_stream
+      ORDER BY course_id, course_stream
+    `);
+
+    // Map course IDs to names and streams to readable names
+    const courseNames: { [key: number]: string } = {
+      1: 'Вайб кодинг'
+    };
+
+    const streamNames: { [key: string]: string } = {
+      '3rd_stream': '3-й поток',
+      '4th_stream': '4-й поток',
+      '5th_stream': '5-й поток'
+    };
+
+    return result.rows.map(row => ({
+      courseId: row.course_id,
+      courseName: courseNames[row.course_id] || `Course ${row.course_id}`,
+      courseStream: streamNames[row.course_stream] || row.course_stream,
+      total: parseInt(row.total),
+      confirmed: parseInt(row.confirmed),
+      pending: parseInt(row.pending),
+      cancelled: parseInt(row.cancelled)
+    }));
+  } finally {
+    client.release();
+  }
+}
+
+// Get top events
+export async function getTopEvents(limit: number = 10): Promise<EventStats[]> {
+  const client = await pool.connect();
+  try {
+    const result = await client.query(`
+      SELECT 
+        event_type,
+        COUNT(*) as count
+      FROM events
+      GROUP BY event_type
+      ORDER BY count DESC
+      LIMIT $1
+    `, [limit]);
+
+    return result.rows.map(row => ({
+      eventType: row.event_type,
+      count: parseInt(row.count)
+    }));
+  } finally {
+    client.release();
+  }
+}
+
+// Get daily statistics for the last N days
+export async function getDailyStats(days: number = 30): Promise<DailyStats[]> {
+  const client = await pool.connect();
+  try {
+    const result = await client.query(`
+      WITH date_series AS (
+        SELECT generate_series(
+          CURRENT_DATE - INTERVAL '${days} days',
+          CURRENT_DATE,
+          INTERVAL '1 day'
+        )::date AS date
+      ),
+      daily_bookings AS (
+        SELECT 
+          DATE(created_at) as date,
+          COUNT(*) as bookings,
+          COUNT(DISTINCT user_id) as new_users
+        FROM bookings
+        WHERE created_at >= CURRENT_DATE - INTERVAL '${days} days'
+        GROUP BY DATE(created_at)
+      ),
+      daily_events AS (
+        SELECT 
+          DATE(created_at) as date,
+          COUNT(*) as events
+        FROM events
+        WHERE created_at >= CURRENT_DATE - INTERVAL '${days} days'
+        GROUP BY DATE(created_at)
+      )
+      SELECT 
+        ds.date,
+        COALESCE(db.new_users, 0) as new_users,
+        COALESCE(db.bookings, 0) as bookings,
+        COALESCE(de.events, 0) as events
+      FROM date_series ds
+      LEFT JOIN daily_bookings db ON ds.date = db.date
+      LEFT JOIN daily_events de ON ds.date = de.date
+      ORDER BY ds.date DESC
+    `);
+
+    return result.rows.map(row => ({
+      date: row.date.toISOString().split('T')[0],
+      newUsers: parseInt(row.new_users),
+      bookings: parseInt(row.bookings),
+      events: parseInt(row.events)
+    }));
+  } finally {
+    client.release();
+  }
+}
+
+// Get recent bookings
+export async function getRecentBookings(limit: number = 20) {
+  const client = await pool.connect();
+  try {
+    const result = await client.query(`
+      SELECT 
+        id,
+        user_id,
+        username,
+        first_name,
+        course_id,
+        course_stream,
+        confirmed,
+        created_at,
+        referral_code,
+        discount_percent
+      FROM bookings
+      ORDER BY created_at DESC
+      LIMIT $1
+    `, [limit]);
+
+    return result.rows;
+  } finally {
+    client.release();
+  }
+}
+
+// Get referral statistics
+export async function getReferralStats() {
+  const client = await pool.connect();
+  try {
+    const result = await client.query(`
+      SELECT 
+        rc.code,
+        rc.name,
+        rc.discount_percent,
+        rc.max_activations,
+        rc.current_activations,
+        rc.is_active,
+        rc.created_at
+      FROM referral_coupons rc
+      ORDER BY rc.created_at DESC
+    `);
+
+    return result.rows;
+  } finally {
+    client.release();
+  }
+}
+
+// Get free lesson registrations with details
+export async function getFreeLessonRegistrations(limit: number = 50): Promise<FreeLessonRegistration[]> {
+  const client = await pool.connect();
+  try {
+    const result = await client.query(`
+      SELECT 
+        id,
+        user_id,
+        username,
+        first_name,
+        email,
+        registered_at,
+        notification_sent,
+        lesson_type
+      FROM free_lesson_registrations
+      ORDER BY registered_at DESC
+      LIMIT $1
+    `, [limit]);
+
+    return result.rows.map(row => ({
+      id: row.id,
+      user_id: row.user_id,
+      username: row.username || 'N/A',
+      first_name: row.first_name || 'N/A',
+      email: row.email || 'N/A',
+      registered_at: row.registered_at.toISOString(),
+      notification_sent: row.notification_sent || false,
+      lesson_type: row.lesson_type || 'Unknown'
+    }));
+  } finally {
+    client.release();
+  }
+}
+
+// Get user growth data for the last N days
+export async function getUserGrowthData(days: number = 30): Promise<UserGrowthData[]> {
+  const client = await pool.connect();
+  try {
+    const result = await client.query(`
+      WITH date_series AS (
+        SELECT generate_series(
+          CURRENT_DATE - INTERVAL '${days} days',
+          CURRENT_DATE,
+          INTERVAL '1 day'
+        )::date AS date
+      ),
+      all_users AS (
+        SELECT user_id, DATE(created_at) as first_seen_date FROM bookings
+        UNION
+        SELECT user_id, DATE(created_at) as first_seen_date FROM events
+        UNION
+        SELECT user_id, DATE(registered_at) as first_seen_date FROM free_lesson_registrations
+      ),
+      first_user_appearances AS (
+        SELECT user_id, MIN(first_seen_date) as first_date
+        FROM all_users
+        GROUP BY user_id
+      ),
+      daily_new_users AS (
+        SELECT 
+          first_date as date,
+          COUNT(*) as new_users_count
+        FROM first_user_appearances
+        WHERE first_date >= CURRENT_DATE - INTERVAL '${days} days'
+        GROUP BY first_date
+      ),
+      cumulative_data AS (
+        SELECT 
+          ds.date,
+          COALESCE(dnu.new_users_count, 0) as new_users,
+          SUM(COALESCE(dnu.new_users_count, 0)) OVER (ORDER BY ds.date) as running_total
+        FROM date_series ds
+        LEFT JOIN daily_new_users dnu ON ds.date = dnu.date
+        ORDER BY ds.date
+      )
+      SELECT 
+        date,
+        new_users,
+        running_total + COALESCE((
+          SELECT COUNT(DISTINCT user_id) 
+          FROM (
+            SELECT user_id FROM bookings WHERE DATE(created_at) < CURRENT_DATE - INTERVAL '${days} days'
+            UNION
+            SELECT user_id FROM events WHERE DATE(created_at) < CURRENT_DATE - INTERVAL '${days} days'
+            UNION
+            SELECT user_id FROM free_lesson_registrations WHERE DATE(registered_at) < CURRENT_DATE - INTERVAL '${days} days'
+          ) as historical_users
+        ), 0) as total_users
+      FROM cumulative_data
+      ORDER BY date ASC
+    `);
+
+    return result.rows.map(row => ({
+      date: row.date.toISOString().split('T')[0],
+      totalUsers: parseInt(row.total_users),
+      newUsers: parseInt(row.new_users)
+    }));
+  } finally {
+    client.release();
+  }
+}
+</file>
+
+<file path="CLAUDE.md">
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+## Essential Commands
+
+- `npm run dev` - Start development server with Turbopack
+- `npm run build` - Build for production
+- `npm run start` - Start production server
+- `npm run lint` - Run linting checks
+
+## Architecture Overview
+
+This is a Next.js 14 TypeScript dashboard for HashSlash School Telegram bot analytics. The application provides monitoring of user interactions, course bookings, and payments through a PostgreSQL database hosted on Railway.
+
+### Key Architecture Components
+
+**Database Layer (`lib/`)**
+- `db.ts` - PostgreSQL connection pool with SSL configuration and required environment variable validation
+- `queries.ts` - Centralized SQL queries with TypeScript interfaces for all data operations
+
+**API Routes (`app/api/`)**
+- `/stats` - Overall dashboard metrics (users, bookings, payments, free lessons)
+- `/courses` - Course-specific statistics with booking states
+- `/course-streams` - Detailed course stream statistics (3rd_stream, 4th_stream)
+- `/events` - User event analytics and top interactions
+- `/bookings` - Recent booking data with user details and stream information
+- `/free-lessons` - Free lesson registrations with email and notification status
+- `/test-db` - Database connection health check
+
+**Pages Structure**
+- `/` - Main dashboard with key metrics and manual refresh button
+- `/workshops` - Course analytics renamed to "Курсы" with stream breakdown and consolidated statistics
+- `/analytics` - 30-day activity charts and event analysis
+- `/content` - Course content viewer with copy functionality
+- `/free-lessons` - Free lesson registrations management
+
+**Database Schema Context**
+The app connects to tables: 
+- `bookings` (confirmed: -1=cancelled, 1=pending, 2=confirmed, includes course_stream field)
+- `events` (user interactions and bot events)
+- `free_lesson_registrations` (registered_at, notification_sent, lesson_type, email fields)
+- `referral_coupons` (discount codes and usage tracking)
+
+**Current Course Configuration**
+Only displays course_id = 1 "Вайб кодинг" (EXTRA course removed). Course streams: 3rd_stream="3-й поток", 4th_stream="4-й поток".
+
+**Environment Requirements**
+Requires `.env.local` with Railway PostgreSQL credentials. All environment variables are required - the app will throw an error if POSTGRES_HOST or POSTGRES_PASSWORD are missing.
+
+**Tech Stack**
+- Next.js 14 with App Router and Turbopack
+- TypeScript for type safety
+- Tailwind CSS v4 for styling
+- Recharts for data visualization
+- PostgreSQL with pg driver
+- Lucide React for icons
+
+## Important Implementation Notes
+
+**Manual Refresh Strategy**
+All pages use manual refresh buttons instead of auto-refresh (setInterval) to prevent database overload on Railway. Always implement manual refresh with loading states.
+
+**Stream Tracking**
+The application tracks course streams (3rd_stream, 4th_stream) and displays them throughout the UI. When working with bookings or course data, always include stream information.
+
+**Security**
+- Database credentials are secured and not hardcoded
+- .env.local is excluded from git
+- All sensitive information removed from README.md
+
+**Railway MCP Integration**
+Use Railway MCP tools when you need to:
+- Investigate actual database schema
+- Check production data structure
+- Debug database connection issues
+</file>
+
+<file path="package.json">
+{
+  "name": "hsl-dashboard",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --turbopack",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@types/pg": "^8.15.5",
+    "date-fns": "^4.1.0",
+    "lucide-react": "^0.540.0",
+    "next": "15.4.7",
+    "pg": "^8.16.3",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "recharts": "^3.1.2"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}
+</file>
+
+<file path="README.md">
+# HSL Bot Dashboard
+
+Dashboard для визуализации данных Telegram бота HashSlash School.
+
+## 🚀 Быстрый запуск
+
+### 1. Установка зависимостей
+
+```bash
+npm install
+```
+
+### 2. Настройка окружения
+
+Создайте файл `.env.local` с параметрами подключения к базе данных:
+
+```bash
+POSTGRES_HOST=your_database_host
+POSTGRES_PORT=your_database_port
+POSTGRES_DB=your_database_name
+POSTGRES_USER=your_database_user
+POSTGRES_PASSWORD=your_database_password
+```
+
+### 3. Запуск в режиме разработки
+
+```bash
+npm run dev
+```
+
+Откройте [http://localhost:3000](http://localhost:3000) в браузере.
+
+## 📊 Функциональность
+
+### Главная страница (/)
+- Ключевые метрики: общее количество пользователей, активные бронирования, подтвержденные оплаты, регистрации на бесплатные уроки
+- Ручное обновление данных по запросу пользователя
+
+### Курсы (/workshops)
+- Детальная статистика по курсам и потокам
+- Отображение активных потоков с количеством студентов
+- Таблица всех бронирований с информацией о потоках и фильтрацией по статусу
+- Информация о скидках и реферальных кодах
+
+### Analytics (/analytics)
+- Графики активности по дням (последние 30 дней)
+- Топ событий пользователей
+- Детальная аналитика взаимодействий
+
+### Content (/content)
+- Просмотр текущих текстов курсов из constants.py
+- Кнопки копирования для быстрого редактирования
+- JSON структуры для разработчиков
+
+## 🔧 API Endpoints
+
+- `GET /api/stats` - Общая статистика
+- `GET /api/courses` - Статистика по курсам
+- `GET /api/course-streams` - Статистика по потокам курсов
+- `GET /api/events` - События и аналитика
+- `GET /api/bookings` - Последние бронирования
+- `GET /api/free-lessons` - Регистрации на бесплатные уроки
+- `GET /api/test-db` - Проверка соединения с БД
+
+## 🗄️ Структура проекта
+
+```
+├── app/
+│   ├── api/           # API маршруты
+│   ├── analytics/     # Страница аналитики
+│   ├── content/       # Страница контента
+│   ├── free-lessons/  # Страница бесплатных уроков
+│   ├── workshops/     # Страница курсов
+│   └── page.tsx       # Главная страница
+├── components/        # React компоненты
+├── lib/
+│   ├── db.ts         # Подключение к PostgreSQL
+│   └── queries.ts    # SQL запросы
+└── .env.local        # Переменные окружения
+```
+
+## 🔍 Отладка
+
+### Проверка соединения с базой данных
+
+Перейдите на [http://localhost:3000/api/test-db](http://localhost:3000/api/test-db) для проверки подключения.
+
+### Просмотр логов
+
+```bash
+# Запуск с подробными логами
+npm run dev
+```
+
+## 📝 Примечания
+
+- Дашборд предназначен для локального использования
+- Ручное обновление данных по кнопке для предотвращения перегрузки базы данных
+- Все даты отображаются в российском формате (ru-RU)
+- Используется PostgreSQL база данных на Railway
+- Поддержка отслеживания потоков курсов и детальной аналитики
+
+## 🛠 Технологии
+
+- **Next.js 14** - React фреймворк
+- **TypeScript** - Типизация
+- **Tailwind CSS** - Стилизация
+- **Recharts** - Графики
+- **PostgreSQL** - База данных
+- **Lucide React** - Иконки
+</file>
+
+<file path="app/page.tsx">
+'use client';
+
+import { useEffect, useState } from 'react';
+import MetricCard from '@/components/MetricCard';
+import UserGrowthChart from '@/components/UserGrowthChart';
+import { Users, GraduationCap, RefreshCw } from 'lucide-react';
+
+interface DashboardStats {
+  totalUsers: number;
+  activeBookings: number;
+  confirmedPayments: number;
+  freeLessonRegistrations: number;
+}
+
+interface UserGrowthData {
+  date: string;
+  totalUsers: number;
+  newUsers: number;
+}
+
+export default function Home() {
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [userGrowthData, setUserGrowthData] = useState<UserGrowthData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchStats = async () => {
+    try {
+      setLoading(true);
+      const [statsResponse, growthResponse] = await Promise.all([
+        fetch('/api/stats'),
+        fetch('/api/user-growth')
+      ]);
+      
+      if (!statsResponse.ok || !growthResponse.ok) {
+        throw new Error('Failed to fetch data');
+      }
+      
+      const statsData = await statsResponse.json();
+      const growthData = await growthResponse.json();
+      
+      setStats(statsData);
+      setUserGrowthData(growthData);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchStats();
+  }, []);
+
+  if (loading && !stats) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-gray-500">Loading dashboard...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-red-500">Error: {error}</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h1 className="text-2xl font-bold text-gray-900">Dashboard Overview</h1>
+        <div className="flex items-center gap-4">
+          <div className="text-sm text-gray-500">
+            Last updated: {new Date().toLocaleTimeString('ru-RU')}
+          </div>
+          <button
+            onClick={fetchStats}
+            disabled={loading}
+            className="flex items-center gap-2 px-3 py-1 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </button>
+        </div>
+      </div>
+
+      {stats && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <MetricCard
+            title="Total Users"
+            value={stats.totalUsers}
+            icon={Users}
+          />
+          <MetricCard
+            title="Free Lesson Signups"
+            value={stats.freeLessonRegistrations}
+            icon={GraduationCap}
+          />
+        </div>
+      )}
+
+      {/* User Growth Chart */}
+      {userGrowthData.length > 0 && (
+        <UserGrowthChart data={userGrowthData} />
+      )}
+    </div>
+  );
+}
+</file>
+
+</files>

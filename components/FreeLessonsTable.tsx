@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 
 interface FreeLessonRegistration {
@@ -14,12 +14,40 @@ interface FreeLessonRegistration {
   lesson_type: string;
 }
 
+interface UserActivity {
+  user_id: number;
+  lead_score: 'hot' | 'warm' | 'cool' | 'cold';
+  total_events: number;
+}
+
 interface FreeLessonsTableProps {
   registrations: FreeLessonRegistration[];
 }
 
 export default function FreeLessonsTable({ registrations }: FreeLessonsTableProps) {
   const [filter, setFilter] = useState('');
+  const [userActivities, setUserActivities] = useState<UserActivity[]>([]);
+
+  useEffect(() => {
+    // Fetch user activity data
+    fetch('/api/user-activity')
+      .then(res => res.json())
+      .then(data => setUserActivities(data))
+      .catch(err => console.error('Failed to fetch user activities:', err));
+  }, []);
+
+  const getUserActivity = (userId: number) => {
+    return userActivities.find(activity => activity.user_id === userId);
+  };
+
+  const getScoreIcon = (score: string) => {
+    switch(score) {
+      case 'hot': return '🔥';
+      case 'warm': return '🟡';
+      case 'cool': return '🔵';
+      default: return '❄️';
+    }
+  };
 
   const filteredRegistrations = registrations.filter((registration) => {
     const searchTerm = filter.toLowerCase();
@@ -112,6 +140,9 @@ export default function FreeLessonsTable({ registrations }: FreeLessonsTableProp
                 Email
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Activity
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Lesson Type
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -120,51 +151,58 @@ export default function FreeLessonsTable({ registrations }: FreeLessonsTableProp
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Notification
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                User ID
-              </th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {filteredRegistrations.map((registration, index) => (
-              <tr key={registration.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex flex-col">
-                    <div className="text-sm font-medium text-gray-900">
-                      {registration.first_name || 'N/A'}
+            {filteredRegistrations.map((registration, index) => {
+              const activity = getUserActivity(registration.user_id);
+              return (
+                <tr key={registration.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex flex-col">
+                      <div className="text-sm font-medium text-gray-900">
+                        {registration.first_name || 'N/A'}
+                      </div>
+                      <div className="text-sm text-gray-500">
+                        @{registration.username || 'N/A'}
+                      </div>
                     </div>
-                    <div className="text-sm text-gray-500">
-                      @{registration.username || 'N/A'}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    {registration.email}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex items-center gap-2">
+                      <span className="text-lg">
+                        {activity ? getScoreIcon(activity.lead_score) : '⚪'}
+                      </span>
+                      <div className="text-xs text-gray-500">
+                        {activity ? `${activity.total_events} events` : 'No data'}
+                      </div>
                     </div>
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  {registration.email}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
-                    {registration.lesson_type}
-                  </span>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {formatDate(registration.registered_at)}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  {registration.notification_sent ? (
-                    <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
-                      Sent
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                    <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                      {registration.lesson_type}
                     </span>
-                  ) : (
-                    <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
-                      Not sent
-                    </span>
-                  )}
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                  {registration.user_id}
-                </td>
-              </tr>
-            ))}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {formatDate(registration.registered_at)}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {registration.notification_sent ? (
+                      <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                        Sent
+                      </span>
+                    ) : (
+                      <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
+                        Not sent
+                      </span>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
