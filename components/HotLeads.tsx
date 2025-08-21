@@ -41,6 +41,12 @@ export default function HotLeads() {
     }
   };
 
+  const getTelegramLink = (username: string) => {
+    if (!username || username === 'N/A') return null;
+    const cleanUsername = username.replace('@', '');
+    return `https://t.me/${cleanUsername}`;
+  };
+
   if (loading) {
     return (
       <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
@@ -65,22 +71,36 @@ export default function HotLeads() {
       </div>
       <div className="space-y-3">
         {hotLeads.length > 0 ? (
-          hotLeads.map((lead, index) => (
-            <div key={lead.user_id} className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="text-lg">{getScoreIcon(lead.lead_score)}</span>
-                <div>
-                  <p className="text-sm font-medium text-gray-900">
-                    {lead.first_name || lead.username}
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    {lead.total_events} events • {lead.active_days} days
-                  </p>
+          hotLeads.map((lead, index) => {
+            const telegramLink = getTelegramLink(lead.username);
+            return (
+              <div key={lead.user_id} className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-lg">{getScoreIcon(lead.lead_score)}</span>
+                  <div>
+                    {telegramLink ? (
+                      <a
+                        href={telegramLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm font-medium text-gray-900 hover:text-blue-600 hover:underline cursor-pointer"
+                      >
+                        {lead.first_name || lead.username} 📱
+                      </a>
+                    ) : (
+                      <p className="text-sm font-medium text-gray-900">
+                        {lead.first_name || lead.username}
+                      </p>
+                    )}
+                    <p className="text-xs text-gray-500">
+                      {lead.total_events} events • {lead.active_days} days
+                    </p>
+                  </div>
                 </div>
+                <span className="text-sm font-bold text-gray-700">#{index + 1}</span>
               </div>
-              <span className="text-sm font-bold text-gray-700">#{index + 1}</span>
-            </div>
-          ))
+            );
+          })
         ) : (
           <p className="text-sm text-gray-500">No activity data available</p>
         )}

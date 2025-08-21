@@ -49,6 +49,12 @@ export default function FreeLessonsTable({ registrations }: FreeLessonsTableProp
     }
   };
 
+  const getTelegramLink = (username: string) => {
+    if (!username || username === 'N/A') return null;
+    const cleanUsername = username.replace('@', '');
+    return `https://t.me/${cleanUsername}`;
+  };
+
   const filteredRegistrations = registrations.filter((registration) => {
     const searchTerm = filter.toLowerCase();
     return (
@@ -156,13 +162,25 @@ export default function FreeLessonsTable({ registrations }: FreeLessonsTableProp
           <tbody className="bg-white divide-y divide-gray-200">
             {filteredRegistrations.map((registration, index) => {
               const activity = getUserActivity(registration.user_id);
+              const telegramLink = getTelegramLink(registration.username);
               return (
                 <tr key={registration.id} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex flex-col">
-                      <div className="text-sm font-medium text-gray-900">
-                        {registration.first_name || 'N/A'}
-                      </div>
+                      {telegramLink ? (
+                        <a
+                          href={telegramLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-sm font-medium text-gray-900 hover:text-blue-600 hover:underline cursor-pointer"
+                        >
+                          {registration.first_name || 'N/A'} 📱
+                        </a>
+                      ) : (
+                        <div className="text-sm font-medium text-gray-900">
+                          {registration.first_name || 'N/A'}
+                        </div>
+                      )}
                       <div className="text-sm text-gray-500">
                         @{registration.username || 'N/A'}
                       </div>
