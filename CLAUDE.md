@@ -33,6 +33,7 @@ This is a Next.js 15 TypeScript dashboard for HashSlash School Telegram bot anal
 - `/messages/history` - Message history with delivery tracking and recipient details
 - `/messages/[id]/recipients` - Individual message recipient status and delivery details
 - `/users/search` - Cached user search with instant results and deduplication
+- `/users/by-stream` - Stream-based user lookup for group messaging functionality
 - `/db-migrate` - Database migration endpoint for schema changes
 - `/db-schema` - Database schema inspection and table structure analysis
 - `/test-messages` - Message system testing and function validation
@@ -44,7 +45,7 @@ This is a Next.js 15 TypeScript dashboard for HashSlash School Telegram bot anal
 - `/analytics` - 30-day activity charts and event analysis
 - `/content` - Course content viewer with copy functionality
 - `/free-lessons` - Free lesson registrations management
-- `/messages/send` - Telegram message broadcasting interface with user search, message composition, and security features
+- `/messages/send` - Telegram message broadcasting interface with tabbed design (Individual/Group), user search, message composition, and security features
 - `/messages/history` - Message history viewer with delivery tracking and recipient details
 
 **Components (`components/`)**
@@ -79,15 +80,15 @@ Requires `.env.local` with Railway PostgreSQL credentials and Telegram bot confi
 All database environment variables are required - the app will throw an error if missing.
 
 **Tech Stack**
-- Next.js 15 with App Router and Turbopack
-- React 19 with React DOM 19
-- TypeScript for type safety
+- Next.js 15.4.7 with App Router and Turbopack
+- React 19.1.0 with React DOM 19.1.0
+- TypeScript 5.x for type safety
 - Tailwind CSS v4 for styling
-- Recharts for data visualization
-- PostgreSQL with pg driver and @types/pg
-- Telegram Bot API with node-telegram-bot-api and @types/node-telegram-bot-api
-- Lucide React for icons
-- date-fns for date manipulation
+- Recharts 3.1.2 for data visualization
+- PostgreSQL with pg 8.16.3 driver and @types/pg 8.15.5
+- Telegram Bot API with node-telegram-bot-api 0.66.0 and @types/node-telegram-bot-api 0.64.10
+- Lucide React 0.540.0 for icons
+- date-fns 4.1.0 for date manipulation
 
 ## Important Implementation Notes
 
@@ -114,20 +115,26 @@ The user activity API implements lead scoring based on event frequency and activ
 
 **Telegram Messaging System**
 The dashboard includes a complete Telegram bot messaging system with:
-- User search and selection with instant cached results
-- HTML message composition with inline keyboard support
-- TEST_MODE for safe development testing without sending real messages
-- User validation and deduplication to prevent multiple messages to same person
-- Comprehensive security features including confirmation dialogs and audit logging
-- Message history tracking with delivery status (sent/failed/pending)
-- Batch processing with rate limiting to respect Telegram API limits
-- Complete audit trail for compliance and debugging
+- **Tabbed Interface**: Individual messaging (manual user selection) and Group messaging (stream-based selection)
+- **User search and selection** with instant cached results via UserCacheService
+- **Stream-based Group Messaging**: Automatic user selection by course stream (3rd_stream, 4th_stream, 5th_stream)
+- **HTML message composition** with inline keyboard support and 4096 character limit
+- **TEST_MODE** for safe development testing without sending real messages
+- **User validation and deduplication** to prevent multiple messages to same person
+- **Comprehensive security features** including confirmation dialogs and audit logging
+- **Message history tracking** with delivery status (sent/failed/pending) and filtering
+- **Batch processing** with rate limiting to respect Telegram API limits
+- **Complete audit trail** for compliance and debugging
 
 ### Message Sending Workflow
 
 **1. Frontend User Interface (`/messages/send`)**
+- **Tabbed Interface**: Switch between Individual and Group messaging modes
+- **Individual Mode**: Manual user search and selection via UserCacheService with instant results
+- **Group Mode**: Stream-based messaging with automatic user loading by course stream
 - **User Search**: UserCacheService provides instant search results from indexed cache (5-minute TTL)
 - **Recipient Selection**: `addUser()` function prevents duplicates using `user_id` comparison
+- **Stream Selection**: `loadStreamUsers()` automatically loads all users from selected course stream
 - **Message Composition**: Textarea with HTML formatting support and 4096 character limit
 - **Security Confirmation**: Detailed dialog showing all recipients with usernames and Telegram IDs
 
@@ -144,6 +151,7 @@ POST /api/messages/send
 - **TEST_MODE Check**: `process.env.TEST_MODE === 'true'` determines real vs simulated sending
 - **Data Validation**: Recipients existence, message text length (≤4096), BOT_TOKEN presence
 - **User Deduplication**: `validateUserIds()` uses `DISTINCT ON (user_id)` to prevent duplicate sends
+- **Message Classification**: Automatically determines individual vs group message based on stream consistency
 
 **4. Database Transaction Flow**
 ```sql
@@ -178,7 +186,9 @@ INSERT INTO message_recipients (message_id, user_id, username) VALUES ...;
 
 **UserCacheService Architecture:**
 - Singleton pattern with Map-based indexing by first letter of username/first_name
+- Dual cache system: general user index and stream-specific cache for group messaging
 - Automatic cache refresh every 5 minutes with `getAllUsers()` deduplication
+- Stream cache supports 3rd_stream, 4th_stream, and 5th_stream for efficient group messaging
 - Instant search results without database queries for better UX
 
 **Database Transaction Safety:**
