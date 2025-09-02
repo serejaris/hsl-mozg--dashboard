@@ -17,7 +17,8 @@ This is a Next.js 15 TypeScript dashboard for HashSlash School Telegram bot anal
 
 **Database Layer (`lib/`)**
 - `db.ts` - PostgreSQL connection pool with SSL configuration and required environment variable validation
-- `queries.ts` - Centralized SQL queries with TypeScript interfaces for all data operations
+- `queries.ts` - Centralized SQL queries with TypeScript interfaces for all data operations including messaging
+- `userCache.ts` - Singleton service for cached user search with indexed lookups and TTL management
 
 **API Routes (`app/api/`)**
 - `/stats` - Overall dashboard metrics (users, bookings, payments, free lessons)
@@ -28,6 +29,13 @@ This is a Next.js 15 TypeScript dashboard for HashSlash School Telegram bot anal
 - `/free-lessons` - Free lesson registrations with email and notification status
 - `/user-growth` - User growth data over time with optional days parameter
 - `/user-activity` - User activity analysis with lead scoring for free lesson registrations
+- `/messages/send` - Telegram message broadcasting with validation and TEST_MODE support
+- `/messages/history` - Message history with delivery tracking and recipient details
+- `/messages/[id]/recipients` - Individual message recipient status and delivery details
+- `/users/search` - Cached user search with instant results and deduplication
+- `/db-migrate` - Database migration endpoint for schema changes
+- `/db-schema` - Database schema inspection and table structure analysis
+- `/test-messages` - Message system testing and function validation
 - `/test-db` - Database connection health check
 
 **Pages Structure**
@@ -36,10 +44,13 @@ This is a Next.js 15 TypeScript dashboard for HashSlash School Telegram bot anal
 - `/analytics` - 30-day activity charts and event analysis
 - `/content` - Course content viewer with copy functionality
 - `/free-lessons` - Free lesson registrations management
+- `/messages/send` - Telegram message broadcasting interface with user search, message composition, and security features
+- `/messages/history` - Message history viewer with delivery tracking and recipient details
 
 **Components (`components/`)**
 - `MetricCard.tsx` - Reusable metric display component
-- `Navigation.tsx` - Main navigation component
+- `Navigation.tsx` - Main navigation component with Messages menu item
+- `MessagesNavigation.tsx` - Sub-navigation for messaging features (Send/History)
 - `BookingsTable.tsx` - Displays recent bookings with filtering
 - `FreeLessonsTable.tsx` - Free lesson registrations table
 - `UserGrowthChart.tsx` - Charts for user growth visualization
@@ -54,12 +65,18 @@ The app connects to tables:
 - `events` (user interactions and bot events)
 - `free_lesson_registrations` (registered_at, notification_sent, lesson_type, email, lesson_date fields)
 - `referral_coupons` (discount codes and usage tracking)
+- `message_history` (message broadcasting history with delivery statistics)
+- `message_recipients` (individual recipient tracking with delivery status)
 
 **Current Course Configuration**
 Only displays course_id = 1 "Вайб кодинг" (EXTRA course removed). Course streams: 3rd_stream="3-й поток", 4th_stream="4-й поток", 5th_stream="5-й поток".
 
 **Environment Requirements**
-Requires `.env.local` with Railway PostgreSQL credentials. All environment variables are required - the app will throw an error if POSTGRES_HOST or POSTGRES_PASSWORD are missing.
+Requires `.env.local` with Railway PostgreSQL credentials and Telegram bot configuration:
+- PostgreSQL: POSTGRES_HOST, POSTGRES_PORT, POSTGRES_DB, POSTGRES_USER, POSTGRES_PASSWORD
+- Telegram: BOT_TOKEN (for message broadcasting)
+- Testing: TEST_MODE (true/false for safe testing without real message sending)
+All database environment variables are required - the app will throw an error if missing.
 
 **Tech Stack**
 - Next.js 15 with App Router and Turbopack
@@ -68,6 +85,7 @@ Requires `.env.local` with Railway PostgreSQL credentials. All environment varia
 - Tailwind CSS v4 for styling
 - Recharts for data visualization
 - PostgreSQL with pg driver and @types/pg
+- Telegram Bot API with node-telegram-bot-api and @types/node-telegram-bot-api
 - Lucide React for icons
 - date-fns for date manipulation
 
@@ -91,11 +109,28 @@ The user activity API implements lead scoring based on event frequency and activ
 - Complex analytics queries use CTEs (Common Table Expressions) for readability
 - Date-based queries use PostgreSQL's generate_series for complete date ranges
 - Union queries combine data from multiple tables (bookings, events, free_lesson_registrations)
+- User deduplication using DISTINCT ON (user_id) to prevent duplicate message sending
+- Cached search with UserCacheService singleton for instant user lookup performance
+
+**Telegram Messaging System**
+The dashboard includes a complete Telegram bot messaging system with:
+- User search and selection with instant cached results
+- HTML message composition with inline keyboard support
+- TEST_MODE for safe development testing without sending real messages
+- User validation and deduplication to prevent multiple messages to same person
+- Comprehensive security features including confirmation dialogs and audit logging
+- Message history tracking with delivery status (sent/failed/pending)
+- Batch processing with rate limiting to respect Telegram API limits
+- Complete audit trail for compliance and debugging
 
 **Security**
 - Database credentials are secured and not hardcoded
 - .env.local is excluded from git
 - All sensitive information removed from README.md
+- Telegram bot token secured in environment variables
+- TEST_MODE prevents accidental message sending during development
+- User validation ensures only valid database users receive messages
+- Comprehensive logging and audit trail for all messaging operations
 
 **Railway MCP Integration**
 Use Railway MCP tools when you need to:
