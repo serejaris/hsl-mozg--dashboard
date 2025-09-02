@@ -61,6 +61,7 @@ export interface TelegramUser {
   user_id: number;
   username: string | null;
   first_name: string | null;
+  course_stream?: string | null;
 }
 
 export interface MessageHistory {
@@ -69,6 +70,8 @@ export interface MessageHistory {
   sent_at: string;
   total_recipients: number;
   successful_deliveries: number;
+  recipient_type: 'individual' | 'group';
+  recipient_group: string | null;
 }
 
 export interface MessageRecipient {
@@ -460,6 +463,34 @@ export async function getAllUsers(): Promise<TelegramUser[]> {
   }
 }
 
+// Get users by course stream for group messaging
+export async function getUsersByStream(courseStream: string): Promise<TelegramUser[]> {
+  const client = await pool.connect();
+  try {
+    const result = await client.query(`
+      SELECT DISTINCT b.user_id, b.username, b.first_name, b.course_stream
+      FROM bookings b
+      WHERE b.course_stream = $1 
+        AND b.user_id IS NOT NULL
+        AND b.confirmed != -1
+      ORDER BY b.user_id,
+               CASE WHEN b.username IS NOT NULL AND b.username != '' THEN 1 ELSE 2 END,
+               CASE WHEN b.first_name IS NOT NULL AND b.first_name != '' THEN 1 ELSE 2 END
+    `, [courseStream]);
+
+    console.log(`📊 getUsersByStream: Found ${result.rows.length} users for stream ${courseStream}`);
+
+    return result.rows.map(row => ({
+      user_id: row.user_id,
+      username: row.username,
+      first_name: row.first_name,
+      course_stream: row.course_stream
+    }));
+  } finally {
+    client.release();
+  }
+}
+
 // Search users from bookings and free lesson registrations
 export async function searchUsers(query: string): Promise<TelegramUser[]> {
   const client = await pool.connect();
@@ -492,14 +523,19 @@ export async function searchUsers(query: string): Promise<TelegramUser[]> {
 }
 
 // Create new message history entry
-export async function createMessageHistory(messageText: string, totalRecipients: number): Promise<number> {
+export async function createMessageHistory(
+  messageText: string, 
+  totalRecipients: number,
+  recipientType: 'individual' | 'group' = 'individual',
+  recipientGroup: string | null = null
+): Promise<number> {
   const client = await pool.connect();
   try {
     const result = await client.query(`
-      INSERT INTO message_history (message_text, total_recipients)
-      VALUES ($1, $2)
+      INSERT INTO message_history (message_text, total_recipients, recipient_type, recipient_group)
+      VALUES ($1, $2, $3, $4)
       RETURNING id
-    `, [messageText, totalRecipients]);
+    `, [messageText, totalRecipients, recipientType, recipientGroup]);
 
     return result.rows[0].id;
   } finally {
@@ -553,23 +589,47 @@ export async function updateMessageDeliveryStats(messageId: number): Promise<voi
   }
 }
 
-// Get message history with pagination
-export async function getMessageHistory(limit: number = 50, offset: number = 0): Promise<MessageHistory[]> {
+// Get message history with pagination and filtering
+export async function getMessageHistory(
+  limit: number = 50, 
+  offset: number = 0,
+  recipientType?: 'individual' | 'group',
+  recipientGroup?: string
+): Promise<MessageHistory[]> {
   const client = await pool.connect();
   try {
-    const result = await client.query(`
-      SELECT id, message_text, sent_at, total_recipients, successful_deliveries
+    let query = `
+      SELECT id, message_text, sent_at, total_recipients, successful_deliveries, recipient_type, recipient_group
       FROM message_history
-      ORDER BY sent_at DESC
-      LIMIT $1 OFFSET $2
-    `, [limit, offset]);
+      WHERE 1=1
+    `;
+    const params: any[] = [];
+    let paramIndex = 1;
 
+    // Add filters
+    if (recipientType) {
+      query += ` AND recipient_type = $${paramIndex++}`;
+      params.push(recipientType);
+    }
+    
+    if (recipientGroup) {
+      query += ` AND recipient_group = $${paramIndex++}`;
+      params.push(recipientGroup);
+    }
+
+    query += ` ORDER BY sent_at DESC LIMIT $${paramIndex++} OFFSET $${paramIndex++}`;
+    params.push(limit, offset);
+
+    const result = await client.query(query, params);
+    
     return result.rows.map(row => ({
       id: row.id,
       message_text: row.message_text,
       sent_at: row.sent_at.toISOString(),
       total_recipients: row.total_recipients,
-      successful_deliveries: row.successful_deliveries || 0
+      successful_deliveries: row.successful_deliveries || 0,
+      recipient_type: row.recipient_type || 'individual',
+      recipient_group: row.recipient_group
     }));
   } finally {
     client.release();

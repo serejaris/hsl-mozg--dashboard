@@ -88,10 +88,27 @@ export async function POST(request: NextRequest) {
     // Use validated users for sending
     const validatedRecipients = validUsers;
 
+    // Determine if this is a group message
+    const uniqueStreams = [...new Set(validatedRecipients.map(user => user.course_stream).filter(Boolean))];
+    const isGroupMessage = uniqueStreams.length === 1 && validatedRecipients.length > 1;
+    const recipientType: 'individual' | 'group' = isGroupMessage ? 'group' : 'individual';
+    const recipientGroup = isGroupMessage ? uniqueStreams[0] : null;
+
+    console.log('📊 Message classification:', {
+      recipientsCount: validatedRecipients.length,
+      uniqueStreams,
+      isGroupMessage,
+      recipientType,
+      recipientGroup,
+      timestamp: new Date().toISOString()
+    });
+
     // Create message history entry
     const messageId = await createMessageHistory(
       data.message.text,
-      validatedRecipients.length
+      validatedRecipients.length,
+      recipientType,
+      recipientGroup
     );
 
     // Add recipients to database
