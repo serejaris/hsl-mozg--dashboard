@@ -8,13 +8,15 @@ import {
   BarChart3, 
   FileText,
   Users,
-  GraduationCap
+  GraduationCap,
+  MessageSquare
 } from 'lucide-react';
 
 const navigation = [
   { name: 'Overview', href: '/', icon: LayoutDashboard },
   { name: 'Курсы', href: '/workshops', icon: Calendar },
   { name: 'Free Lessons', href: '/free-lessons', icon: GraduationCap },
+  { name: 'Messages', href: '/messages/send', icon: MessageSquare },
   { name: 'Analytics', href: '/analytics', icon: BarChart3 },
   { name: 'Content', href: '/content', icon: FileText },
 ];
@@ -33,7 +35,9 @@ export default function Navigation() {
             <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
               {navigation.map((item) => {
                 const Icon = item.icon;
-                const isActive = pathname === item.href;
+                const isActive = item.name === 'Messages' 
+                  ? pathname.startsWith('/messages') 
+                  : pathname === item.href;
                 return (
                   <Link
                     key={item.name}

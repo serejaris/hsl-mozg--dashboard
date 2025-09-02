@@ -56,6 +56,29 @@ export interface UserGrowthData {
   newUsers: number;
 }
 
+// Message-related interfaces
+export interface TelegramUser {
+  user_id: number;
+  username: string | null;
+  first_name: string | null;
+}
+
+export interface MessageHistory {
+  id: number;
+  message_text: string;
+  sent_at: string;
+  total_recipients: number;
+  successful_deliveries: number;
+}
+
+export interface MessageRecipient {
+  id: number;
+  message_id: number;
+  user_id: number;
+  username: string | null;
+  delivery_status: string;
+}
+
 // Get overall dashboard statistics
 export async function getDashboardStats(): Promise<DashboardStats> {
   const client = await pool.connect();
@@ -398,6 +421,275 @@ export async function getUserGrowthData(days: number = 30): Promise<UserGrowthDa
       totalUsers: parseInt(row.total_users),
       newUsers: parseInt(row.new_users)
     }));
+  } finally {
+    client.release();
+  }
+}
+
+// Message-related functions
+
+// Get all users from bookings and free lesson registrations for caching
+export async function getAllUsers(): Promise<TelegramUser[]> {
+  const client = await pool.connect();
+  try {
+    const result = await client.query(`
+      SELECT DISTINCT ON (user_id) user_id, username, first_name
+      FROM (
+        SELECT user_id, username, first_name 
+        FROM bookings 
+        WHERE user_id IS NOT NULL
+        UNION
+        SELECT user_id, username, first_name 
+        FROM free_lesson_registrations 
+        WHERE user_id IS NOT NULL
+      ) AS users
+      ORDER BY user_id, 
+               CASE WHEN username IS NOT NULL AND username != '' THEN 1 ELSE 2 END,
+               CASE WHEN first_name IS NOT NULL AND first_name != '' THEN 1 ELSE 2 END
+    `);
+
+    console.log(`📊 getAllUsers: Found ${result.rows.length} unique users (deduplicated by user_id)`);
+
+    return result.rows.map(row => ({
+      user_id: row.user_id,
+      username: row.username,
+      first_name: row.first_name
+    }));
+  } finally {
+    client.release();
+  }
+}
+
+// Search users from bookings and free lesson registrations
+export async function searchUsers(query: string): Promise<TelegramUser[]> {
+  const client = await pool.connect();
+  try {
+    const searchPattern = `%${query.toLowerCase()}%`;
+    const result = await client.query(`
+      SELECT DISTINCT user_id, username, first_name
+      FROM (
+        SELECT user_id, username, first_name 
+        FROM bookings 
+        WHERE LOWER(username) LIKE $1 OR LOWER(first_name) LIKE $1
+        UNION
+        SELECT user_id, username, first_name 
+        FROM free_lesson_registrations 
+        WHERE LOWER(username) LIKE $1 OR LOWER(first_name) LIKE $1
+      ) AS users
+      WHERE user_id IS NOT NULL
+      ORDER BY username, first_name
+      LIMIT 50
+    `, [searchPattern]);
+
+    return result.rows.map(row => ({
+      user_id: row.user_id,
+      username: row.username,
+      first_name: row.first_name
+    }));
+  } finally {
+    client.release();
+  }
+}
+
+// Create new message history entry
+export async function createMessageHistory(messageText: string, totalRecipients: number): Promise<number> {
+  const client = await pool.connect();
+  try {
+    const result = await client.query(`
+      INSERT INTO message_history (message_text, total_recipients)
+      VALUES ($1, $2)
+      RETURNING id
+    `, [messageText, totalRecipients]);
+
+    return result.rows[0].id;
+  } finally {
+    client.release();
+  }
+}
+
+// Add message recipients
+export async function addMessageRecipients(messageId: number, recipients: TelegramUser[]): Promise<void> {
+  const client = await pool.connect();
+  try {
+    const values = recipients.map(user => `(${messageId}, ${user.user_id}, '${user.username || ''}')`).join(',');
+    await client.query(`
+      INSERT INTO message_recipients (message_id, user_id, username)
+      VALUES ${values}
+    `);
+  } finally {
+    client.release();
+  }
+}
+
+// Update recipient delivery status
+export async function updateRecipientStatus(messageId: number, userId: number, status: string): Promise<void> {
+  const client = await pool.connect();
+  try {
+    await client.query(`
+      UPDATE message_recipients 
+      SET delivery_status = $1 
+      WHERE message_id = $2 AND user_id = $3
+    `, [status, messageId, userId]);
+  } finally {
+    client.release();
+  }
+}
+
+// Update message history with delivery stats
+export async function updateMessageDeliveryStats(messageId: number): Promise<void> {
+  const client = await pool.connect();
+  try {
+    await client.query(`
+      UPDATE message_history 
+      SET successful_deliveries = (
+        SELECT COUNT(*) 
+        FROM message_recipients 
+        WHERE message_id = $1 AND delivery_status = 'sent'
+      )
+      WHERE id = $1
+    `, [messageId]);
+  } finally {
+    client.release();
+  }
+}
+
+// Get message history with pagination
+export async function getMessageHistory(limit: number = 50, offset: number = 0): Promise<MessageHistory[]> {
+  const client = await pool.connect();
+  try {
+    const result = await client.query(`
+      SELECT id, message_text, sent_at, total_recipients, successful_deliveries
+      FROM message_history
+      ORDER BY sent_at DESC
+      LIMIT $1 OFFSET $2
+    `, [limit, offset]);
+
+    return result.rows.map(row => ({
+      id: row.id,
+      message_text: row.message_text,
+      sent_at: row.sent_at.toISOString(),
+      total_recipients: row.total_recipients,
+      successful_deliveries: row.successful_deliveries || 0
+    }));
+  } finally {
+    client.release();
+  }
+}
+
+// Get message recipients with delivery status
+export async function getMessageRecipients(messageId: number): Promise<MessageRecipient[]> {
+  const client = await pool.connect();
+  try {
+    const result = await client.query(`
+      SELECT id, message_id, user_id, username, delivery_status
+      FROM message_recipients
+      WHERE message_id = $1
+      ORDER BY id
+    `, [messageId]);
+
+    return result.rows.map(row => ({
+      id: row.id,
+      message_id: row.message_id,
+      user_id: row.user_id,
+      username: row.username,
+      delivery_status: row.delivery_status
+    }));
+  } finally {
+    client.release();
+  }
+}
+
+// Validate user IDs exist in database
+export async function validateUserIds(userIds: number[]): Promise<{
+  valid: TelegramUser[];
+  invalid: number[];
+}> {
+  const client = await pool.connect();
+  try {
+    const result = await client.query(`
+      SELECT DISTINCT ON (user_id) user_id, username, first_name
+      FROM (
+        SELECT user_id, username, first_name 
+        FROM bookings 
+        WHERE user_id = ANY($1)
+        UNION
+        SELECT user_id, username, first_name 
+        FROM free_lesson_registrations 
+        WHERE user_id = ANY($1)
+      ) AS users
+      ORDER BY user_id, 
+               CASE WHEN username IS NOT NULL AND username != '' THEN 1 ELSE 2 END,
+               CASE WHEN first_name IS NOT NULL AND first_name != '' THEN 1 ELSE 2 END
+    `, [userIds]);
+
+    const validUsers: TelegramUser[] = result.rows.map(row => ({
+      user_id: row.user_id,
+      username: row.username,
+      first_name: row.first_name
+    }));
+
+    const validIds = new Set(validUsers.map(u => u.user_id));
+    const invalidIds = userIds.filter(id => !validIds.has(id));
+
+    console.log(`🔍 validateUserIds: Requested ${userIds.length} user(s), found ${validUsers.length} unique valid user(s), ${invalidIds.length} invalid`);
+
+    return {
+      valid: validUsers,
+      invalid: invalidIds
+    };
+  } finally {
+    client.release();
+  }
+}
+
+// Comprehensive audit logging interface
+export interface AuditLogEntry {
+  id: number;
+  action_type: string;
+  user_count: number;
+  message_preview: string;
+  test_mode: boolean;
+  success: boolean;
+  created_at: string;
+  details: string;
+}
+
+// Create audit log entry for message sending operations
+export async function createAuditLogEntry(
+  actionType: string,
+  userCount: number,
+  messagePreview: string,
+  testMode: boolean,
+  success: boolean,
+  details: object
+): Promise<number> {
+  const client = await pool.connect();
+  try {
+    console.log('📋 Creating audit log entry:', {
+      actionType,
+      userCount,
+      messagePreview: messagePreview.slice(0, 50) + (messagePreview.length > 50 ? '...' : ''),
+      testMode,
+      success,
+      timestamp: new Date().toISOString()
+    });
+
+    // For now, we'll log to console since we haven't created the audit_log table
+    // In a production environment, you would create an audit_log table and insert here
+    const auditEntry = {
+      action_type: actionType,
+      user_count: userCount,
+      message_preview: messagePreview.slice(0, 100),
+      test_mode: testMode,
+      success: success,
+      created_at: new Date().toISOString(),
+      details: JSON.stringify(details)
+    };
+
+    console.log('🔐 AUDIT LOG ENTRY:', auditEntry);
+
+    // Return a mock ID for now
+    return Date.now();
   } finally {
     client.release();
   }
