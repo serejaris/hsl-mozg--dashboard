@@ -20,25 +20,17 @@ interface SendMessageResponse {
 }
 
 export default function SendMessagePage() {
-  // Tab management
-  const [activeTab, setActiveTab] = useState<'individual' | 'group'>('individual');
   const [streamStats, setStreamStats] = useState<{[stream: string]: number}>({});
-  
-  // Individual messaging states
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<TelegramUser[]>([]);
   const [selectedUsers, setSelectedUsers] = useState<TelegramUser[]>([]);
-  
-  // Group messaging states
-  const [selectedStream, setSelectedStream] = useState<string | null>(null);
-  
-  // Common states
   const [messageText, setMessageText] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [sendResult, setSendResult] = useState<SendMessageResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [loadingStreamUsers, setLoadingStreamUsers] = useState<string | null>(null);
 
   const searchUsers = async (query: string) => {
     if (query.length < 2) {
@@ -162,32 +154,29 @@ export default function SendMessagePage() {
   };
 
   const loadStreamUsers = async (stream: string) => {
-    setIsSearching(true);
+    setLoadingStreamUsers(stream);
     try {
       const response = await fetch(`/api/users/by-stream?stream=${stream}`);
       if (!response.ok) throw new Error('Failed to fetch stream users');
       const users = await response.json();
       
-      setSelectedUsers(users);
-      setSelectedStream(stream);
+      // Add stream users to existing selection instead of replacing
+      const newUsers = users.filter((user: TelegramUser) => 
+        !selectedUsers.find(existing => existing.user_id === user.user_id)
+      );
+      setSelectedUsers(prev => [...prev, ...newUsers]);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load stream users');
     } finally {
-      setIsSearching(false);
+      setLoadingStreamUsers(null);
     }
   };
 
-  const handleTabSwitch = (tab: 'individual' | 'group') => {
-    setActiveTab(tab);
+  const clearAllSelections = () => {
     setSelectedUsers([]);
-    setSelectedStream(null);
     setSearchQuery('');
     setSearchResults([]);
     setError(null);
-    
-    if (tab === 'group' && Object.keys(streamStats).length === 0) {
-      fetchStreamStats();
-    }
   };
 
   useEffect(() => {
@@ -215,140 +204,109 @@ export default function SendMessagePage() {
           </div>
 
           <div className="space-y-6">
-            {/* Tabs */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-              <div className="border-b border-gray-200">
-                <nav className="flex space-x-8 px-6">
-                  <button
-                    onClick={() => handleTabSwitch('individual')}
-                    className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                      activeTab === 'individual'
-                        ? 'border-blue-500 text-blue-600'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                    }`}
-                  >
-                    Индивидуально
-                  </button>
-                  <button
-                    onClick={() => handleTabSwitch('group')}
-                    className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                      activeTab === 'group'
-                        ? 'border-blue-500 text-blue-600'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                    }`}
-                  >
-                    По потокам
-                  </button>
-                </nav>
-              </div>
-
-              <div className="p-6">
-                <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
+            {/* Recipient Selection */}
+            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-semibold text-gray-900 flex items-center">
                   <Users className="mr-2" size={20} />
-                  {activeTab === 'individual' ? 'Индивидуальный выбор получателей' : 'Выбор потока'}
+                  Выбор получателей
                 </h2>
-                
-                {/* Individual Tab Content */}
-                {activeTab === 'individual' && (
-                  <>
-                    <div className="relative">
-                      <input
-                        type="text"
-                        value={searchQuery}
-                        onChange={(e) => handleSearchChange(e.target.value)}
-                        placeholder="Поиск по @username или имени..."
-                        className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                      {isSearching && (
-                        <Loader2 className="absolute right-3 top-2.5 animate-spin" size={20} />
-                      )}
-                    </div>
-
-                    {/* Search Results */}
-                    {searchResults.length > 0 && (
-                      <div className="mt-2 border border-gray-200 rounded-md max-h-48 overflow-y-auto">
-                        {searchResults.map(user => (
-                          <button
-                            key={user.user_id}
-                            onClick={() => addUser(user)}
-                            className="w-full px-4 py-2 text-left hover:bg-gray-100 border-b last:border-b-0 transition-colors"
-                          >
-                            <div className="font-medium">@{user.username || 'no_username'}</div>
-                            <div className="text-sm text-gray-600">{user.first_name || 'No name'}</div>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </>
-                )}
-
-                {/* Group Tab Content */}
-                {activeTab === 'group' && (
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      {['3rd_stream', '4th_stream', '5th_stream'].map(stream => (
-                        <button
-                          key={stream}
-                          onClick={() => loadStreamUsers(stream)}
-                          disabled={isSearching}
-                          className={`p-4 border-2 rounded-lg text-center transition-colors ${
-                            selectedStream === stream
-                              ? 'border-blue-500 bg-blue-50'
-                              : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50'
-                          } ${isSearching ? 'opacity-50 cursor-not-allowed' : ''}`}
-                        >
-                          <div className="font-semibold text-lg">
-                            {getStreamDisplayName(stream)}
-                          </div>
-                          <div className="text-sm text-gray-600">
-                            {streamStats[stream] || 0} студентов
-                          </div>
-                          {isSearching && selectedStream === stream && (
-                            <Loader2 className="mx-auto mt-2 animate-spin" size={16} />
-                          )}
-                        </button>
-                      ))}
-                    </div>
-                    
-                    {selectedStream && (
-                      <div className="text-sm text-gray-600 bg-blue-50 p-3 rounded">
-                        Выбран поток: <strong>{getStreamDisplayName(selectedStream)}</strong> ({selectedUsers.length} получателей)
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Selected Users Display */}
                 {selectedUsers.length > 0 && (
-                  <div className="mt-4">
-                    <h3 className="text-sm font-medium text-gray-700 mb-2">
-                      Выбранные получатели ({selectedUsers.length}):
-                    </h3>
-                    <div className="flex flex-wrap gap-2">
-                      {activeTab === 'individual' ? (
-                        selectedUsers.map(user => (
-                          <span
-                            key={user.user_id}
-                            className="inline-flex items-center px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm"
-                          >
-                            @{user.username || user.first_name || 'no_name'}
-                            <button
-                              onClick={() => removeUser(user.user_id)}
-                              className="ml-2 text-blue-600 hover:text-blue-800"
-                            >
-                              ×
-                            </button>
-                          </span>
-                        ))
-                      ) : (
-                        <div className="text-sm text-gray-600">
-                          Все студенты потока {selectedStream && getStreamDisplayName(selectedStream)} будут получать сообщение
-                        </div>
-                      )}
-                    </div>
+                  <button
+                    onClick={clearAllSelections}
+                    className="text-sm text-gray-500 hover:text-gray-700 underline"
+                  >
+                    Очистить всё
+                  </button>
+                )}
+              </div>
+              
+              {/* Search Section */}
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Поиск студентов
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => handleSearchChange(e.target.value)}
+                    placeholder="Введите @username или имя студента..."
+                    className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  {isSearching && (
+                    <Loader2 className="absolute right-3 top-3.5 animate-spin" size={20} />
+                  )}
+                </div>
+
+                {/* Search Results */}
+                {searchResults.length > 0 && (
+                  <div className="mt-2 border border-gray-200 rounded-md max-h-48 overflow-y-auto">
+                    {searchResults.map(user => (
+                      <button
+                        key={user.user_id}
+                        onClick={() => addUser(user)}
+                        className="w-full px-4 py-2 text-left hover:bg-gray-100 border-b last:border-b-0 transition-colors"
+                      >
+                        <div className="font-medium">@{user.username || 'no_username'}</div>
+                        <div className="text-sm text-gray-600">{user.first_name || 'No name'}</div>
+                      </button>
+                    ))}
                   </div>
                 )}
               </div>
+
+              {/* Stream Selection */}
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Или выберите целый поток
+                </label>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  {['3rd_stream', '4th_stream', '5th_stream'].map(stream => (
+                    <button
+                      key={stream}
+                      onClick={() => loadStreamUsers(stream)}
+                      disabled={loadingStreamUsers !== null}
+                      className="p-4 border-2 border-gray-200 rounded-lg text-center transition-colors hover:border-blue-300 hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <div className="font-semibold text-lg">
+                        {getStreamDisplayName(stream)}
+                      </div>
+                      <div className="text-sm text-gray-600">
+                        {streamStats[stream] || 0} студентов
+                      </div>
+                      {loadingStreamUsers === stream && (
+                        <Loader2 className="mx-auto mt-2 animate-spin" size={16} />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Selected Users Display */}
+              {selectedUsers.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-medium text-gray-700 mb-3">
+                    Выбранные получатели ({selectedUsers.length}):
+                  </h3>
+                  <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
+                    {selectedUsers.map(user => (
+                      <span
+                        key={user.user_id}
+                        className="inline-flex items-center px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm"
+                      >
+                        @{user.username || user.first_name || 'no_name'}
+                        <button
+                          onClick={() => removeUser(user.user_id)}
+                          className="ml-2 text-blue-600 hover:text-blue-800 font-bold"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Message Composer */}
