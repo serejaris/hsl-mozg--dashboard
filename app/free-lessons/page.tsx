@@ -5,6 +5,7 @@ import FreeLessonsTable from '@/components/FreeLessonsTable';
 import MetricCard from '@/components/MetricCard';
 import HotLeads from '@/components/HotLeads';
 import RegistrationTrendChart from '@/components/RegistrationTrendChart';
+import UnifiedLessonBreakdown from '@/components/UnifiedLessonBreakdown';
 import { GraduationCap, Users, RefreshCw } from 'lucide-react';
 
 interface FreeLessonRegistration {
@@ -16,6 +17,7 @@ interface FreeLessonRegistration {
   registered_at: string;
   notification_sent: boolean;
   lesson_type: string;
+  lesson_date: string;
 }
 
 export default function FreeLessonsPage() {
@@ -64,12 +66,6 @@ export default function FreeLessonsPage() {
   // Calculate statistics
   const totalRegistrations = registrations.length;
   const uniqueUsers = new Set(registrations.map(r => r.user_id)).size;
-  
-  const lessonTypeStats = registrations.reduce((acc, reg) => {
-    const lessonType = reg.lesson_type || 'Unknown';
-    acc[lessonType] = (acc[lessonType] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
 
   return (
     <div className="space-y-6">
@@ -105,26 +101,8 @@ export default function FreeLessonsPage() {
         <HotLeads />
       </div>
 
-      {/* Lesson Type Statistics */}
-      {Object.keys(lessonTypeStats).length > 0 && (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-          <div className="p-6 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900">Lesson Type Breakdown</h2>
-          </div>
-          <div className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {Object.entries(lessonTypeStats)
-                .sort(([,a], [,b]) => b - a)
-                .map(([lessonType, count]) => (
-                  <div key={lessonType} className="flex justify-between items-center p-3 bg-gray-50 rounded-lg">
-                    <span className="font-medium text-gray-900">{lessonType}</span>
-                    <span className="text-lg font-bold text-blue-600">{count}</span>
-                  </div>
-                ))}
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Unified Lesson Breakdown */}
+      <UnifiedLessonBreakdown registrations={registrations} />
 
       {/* Registration Trend Chart */}
       <RegistrationTrendChart registrations={registrations} />

@@ -40,6 +40,7 @@ export interface FreeLessonRegistration {
   registered_at: string;
   notification_sent: boolean;
   lesson_type: string;
+  lesson_date: string;
 }
 
 export interface DailyStats {
@@ -311,7 +312,8 @@ export async function getFreeLessonRegistrations(limit: number = 50): Promise<Fr
         email,
         registered_at,
         notification_sent,
-        lesson_type
+        lesson_type,
+        lesson_date
       FROM free_lesson_registrations
       ORDER BY registered_at DESC
       LIMIT $1
@@ -325,7 +327,8 @@ export async function getFreeLessonRegistrations(limit: number = 50): Promise<Fr
       email: row.email || 'N/A',
       registered_at: row.registered_at.toISOString(),
       notification_sent: row.notification_sent || false,
-      lesson_type: row.lesson_type || 'Unknown'
+      lesson_type: row.lesson_type || 'Unknown',
+      lesson_date: row.lesson_date ? row.lesson_date.toISOString().split('T')[0] : 'N/A'
     }));
   } finally {
     client.release();
