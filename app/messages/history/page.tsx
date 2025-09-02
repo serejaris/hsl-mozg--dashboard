@@ -10,6 +10,8 @@ interface MessageHistory {
   sent_at: string;
   total_recipients: number;
   successful_deliveries: number;
+  recipient_type: 'individual' | 'group';
+  recipient_group: string | null;
 }
 
 interface MessageRecipient {
@@ -27,12 +29,30 @@ export default function MessageHistoryPage() {
   const [loading, setLoading] = useState(true);
   const [loadingRecipients, setLoadingRecipients] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Filter states
+  const [activeFilter, setActiveFilter] = useState<'all' | 'individual' | '3rd_stream' | '4th_stream' | '5th_stream'>('all');
 
   const fetchMessages = async () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch('/api/messages/history');
+      let url = '/api/messages/history';
+      const params = new URLSearchParams();
+      
+      // Apply filters
+      if (activeFilter === 'individual') {
+        params.set('recipient_type', 'individual');
+      } else if (activeFilter !== 'all') {
+        params.set('recipient_type', 'group');
+        params.set('recipient_group', activeFilter);
+      }
+      
+      if (params.toString()) {
+        url += '?' + params.toString();
+      }
+      
+      const response = await fetch(url);
       if (!response.ok) {
         throw new Error('Failed to fetch message history');
       }
@@ -83,7 +103,7 @@ export default function MessageHistoryPage() {
 
   useEffect(() => {
     fetchMessages();
-  }, []);
+  }, [activeFilter]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -110,6 +130,37 @@ export default function MessageHistoryPage() {
             />
             Обновить
           </button>
+        </div>
+
+        {/* Filters */}
+        <div className="mb-6 bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+          <h3 className="text-lg font-medium text-gray-900 mb-3">Фильтры</h3>
+          <div className="flex flex-wrap gap-2">
+            {[
+              { key: 'all', label: 'Все сообщения' },
+              { key: 'individual', label: 'Индивидуальные' },
+              { key: '3rd_stream', label: '3-й поток' },
+              { key: '4th_stream', label: '4-й поток' },
+              { key: '5th_stream', label: '5-й поток' }
+            ].map(filter => (
+              <button
+                key={filter.key}
+                onClick={() => setActiveFilter(filter.key as any)}
+                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
+                  activeFilter === filter.key
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                {filter.label}
+                {activeFilter === filter.key && (
+                  <span className="ml-2 text-xs bg-white/20 px-1.5 py-0.5 rounded">
+                    {messages.length}
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
         </div>
 
         {error && (

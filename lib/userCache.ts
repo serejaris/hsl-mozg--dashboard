@@ -3,11 +3,13 @@ import { TelegramUser } from './queries';
 class UserCacheService {
   private static instance: UserCacheService;
   private index: Map<string, TelegramUser[]> = new Map();
+  private streamCache: Map<string, TelegramUser[]> = new Map();
   private allUsers: TelegramUser[] = [];
   private initialized = false;
   private lastUpdate = 0;
   private readonly CACHE_TTL = 5 * 60 * 1000; // 5 minutes
   private readonly MAX_RESULTS = 50;
+  private readonly VALID_STREAMS = ['3rd_stream', '4th_stream', '5th_stream'];
 
   private constructor() {}
 
@@ -23,6 +25,7 @@ class UserCacheService {
     
     if (!this.initialized || (now - this.lastUpdate) > this.CACHE_TTL) {
       await this.loadUsers();
+      await this.loadUsersByStreams();
       this.buildIndex();
       this.initialized = true;
       this.lastUpdate = now;
@@ -38,6 +41,25 @@ class UserCacheService {
     } catch (error) {
       console.error('Failed to load users for cache:', error);
       this.allUsers = [];
+    }
+  }
+
+  private async loadUsersByStreams(): Promise<void> {
+    try {
+      // Import getUsersByStream function dynamically to avoid circular dependency
+      const { getUsersByStream } = await import('./queries');
+      
+      this.streamCache.clear();
+      
+      // Load users for each valid stream
+      for (const stream of this.VALID_STREAMS) {
+        const users = await getUsersByStream(stream);
+        this.streamCache.set(stream, users);
+        console.log(`Stream cache loaded for ${stream}: ${users.length} users`);
+      }
+    } catch (error) {
+      console.error('Failed to load users by streams for cache:', error);
+      this.streamCache.clear();
     }
   }
 
@@ -107,15 +129,49 @@ class UserCacheService {
     return results;
   }
 
+  // Get users by course stream
+  getUsersByStream(stream: string): TelegramUser[] {
+    if (!this.VALID_STREAMS.includes(stream)) {
+      console.warn(`Invalid stream requested: ${stream}`);
+      return [];
+    }
+
+    const users = this.streamCache.get(stream) || [];
+    
+    console.log('📊 UserCache stream lookup:', {
+      stream,
+      usersCount: users.length,
+      cacheAge: Date.now() - this.lastUpdate,
+      timestamp: new Date().toISOString()
+    });
+
+    return users;
+  }
+
+  // Get stream statistics
+  getStreamStats(): { [stream: string]: number } {
+    const stats: { [stream: string]: number } = {};
+    
+    for (const stream of this.VALID_STREAMS) {
+      stats[stream] = this.streamCache.get(stream)?.length || 0;
+    }
+
+    return stats;
+  }
+
   getStats(): { 
     totalUsers: number; 
     indexSize: number; 
+    streamCacheSize: number;
+    streamStats: { [stream: string]: number };
     initialized: boolean; 
     lastUpdate: Date | null 
   } {
     return {
       totalUsers: this.allUsers.length,
       indexSize: this.index.size,
+      streamCacheSize: this.streamCache.size,
+      streamStats: this.getStreamStats(),
       initialized: this.initialized,
       lastUpdate: this.lastUpdate ? new Date(this.lastUpdate) : null
     };
