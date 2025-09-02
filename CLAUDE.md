@@ -123,6 +123,83 @@ The dashboard includes a complete Telegram bot messaging system with:
 - Batch processing with rate limiting to respect Telegram API limits
 - Complete audit trail for compliance and debugging
 
+### Message Sending Workflow
+
+**1. Frontend User Interface (`/messages/send`)**
+- **User Search**: UserCacheService provides instant search results from indexed cache (5-minute TTL)
+- **Recipient Selection**: `addUser()` function prevents duplicates using `user_id` comparison
+- **Message Composition**: Textarea with HTML formatting support and 4096 character limit
+- **Security Confirmation**: Detailed dialog showing all recipients with usernames and Telegram IDs
+
+**2. API Request Processing (`/api/messages/send`)**
+```javascript
+POST /api/messages/send
+{
+  "recipients": [{"user_id": 12345, "username": "user", "first_name": "Name"}],
+  "message": {"text": "Hello", "parse_mode": "HTML"}
+}
+```
+
+**3. Server-Side Validation**
+- **TEST_MODE Check**: `process.env.TEST_MODE === 'true'` determines real vs simulated sending
+- **Data Validation**: Recipients existence, message text length (≤4096), BOT_TOKEN presence
+- **User Deduplication**: `validateUserIds()` uses `DISTINCT ON (user_id)` to prevent duplicate sends
+
+**4. Database Transaction Flow**
+```sql
+-- Create message record
+INSERT INTO message_history (message_text, total_recipients) VALUES ($1, $2);
+-- Add recipients with pending status  
+INSERT INTO message_recipients (message_id, user_id, username) VALUES ...;
+```
+
+**5. Message Delivery Process**
+
+**TEST_MODE (Development):**
+- Logs all operations without sending real messages
+- Simulates successful delivery for UI testing
+- Updates database with 'sent' status for all recipients
+- Returns `test_mode: true` in response
+
+**Production MODE:**
+- **Batch Processing**: Processes recipients in batches of 10 to respect Telegram API limits
+- **Individual Sending**: `bot.sendMessage(user_id, text, options)` for each recipient
+- **Error Handling**: Captures specific Telegram API errors (403=blocked, 400=invalid)
+- **Status Updates**: Updates `message_recipients.delivery_status` per recipient
+- **Rate Limiting**: 1-second delay between batches
+
+**6. Result Processing**
+- Updates `message_history.successful_deliveries` count
+- Creates comprehensive audit log entry
+- Returns detailed response with sent/failed counts and specific errors
+- Frontend displays results and clears form on success
+
+### Technical Implementation Details
+
+**UserCacheService Architecture:**
+- Singleton pattern with Map-based indexing by first letter of username/first_name
+- Automatic cache refresh every 5 minutes with `getAllUsers()` deduplication
+- Instant search results without database queries for better UX
+
+**Database Transaction Safety:**
+- All messaging operations use connection pooling with proper client release
+- Message history created before sending to ensure audit trail
+- Recipient status updates happen per individual send attempt
+- Failed sends don't block other recipients in the batch
+
+**Error Handling Matrix:**
+- **403 Forbidden**: "User blocked bot" - User has blocked the Telegram bot
+- **400 Bad Request**: "Invalid user or message" - Invalid Telegram user ID or message format  
+- **Network errors**: Captured with full error description for debugging
+- **Database errors**: Transaction rollback prevents partial state
+
+**Security Validation Chain:**
+1. Frontend duplicate prevention using `user_id` comparison
+2. Backend user existence validation against database
+3. SQL-level deduplication with `DISTINCT ON (user_id)`
+4. Confirmation dialog with complete recipient list and IDs
+5. Comprehensive audit logging of all operations
+
 **Security**
 - Database credentials are secured and not hardcoded
 - .env.local is excluded from git
