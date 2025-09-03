@@ -1,8 +1,15 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Send, Users, MessageSquare, Loader2 } from 'lucide-react';
+import { Send, Users, MessageSquare, Loader2, X } from 'lucide-react';
 import MessagesNavigation from '@/components/MessagesNavigation';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
+
 
 interface TelegramUser {
   user_id: number;
@@ -190,152 +197,161 @@ export default function SendMessagePage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       <MessagesNavigation />
-      <div className="p-8">
+      <div className="p-6 space-y-6">
         <div className="max-w-4xl mx-auto">
           <div className="mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+            <h1 className="text-3xl font-bold text-foreground mb-2">
               Отправка сообщений
             </h1>
-            <p className="text-gray-600">
+            <p className="text-muted-foreground">
               Отправьте персонализированные сообщения пользователям Telegram бота
             </p>
           </div>
 
-          <div className="space-y-6">
-            {/* Recipient Selection */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-semibold text-gray-900 flex items-center">
-                  <Users className="mr-2" size={20} />
-                  Выбор получателей
-                </h2>
-                {selectedUsers.length > 0 && (
-                  <button
-                    onClick={clearAllSelections}
-                    className="text-sm text-gray-500 hover:text-gray-700 underline"
-                  >
-                    Очистить всё
-                  </button>
-                )}
-              </div>
+          <div className="space-y-4">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center">
+                    <Users className="mr-2" size={20} />
+                    Выбор получателей
+                  </CardTitle>
+                  {selectedUsers.length > 0 && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={clearAllSelections}
+                    >
+                      Очистить всё
+                    </Button>
+                  )}
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
               
-              {/* Search Section */}
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Поиск студентов
-                </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => handleSearchChange(e.target.value)}
-                    placeholder="Введите @username или имя студента..."
-                    className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  />
-                  {isSearching && (
-                    <Loader2 className="absolute right-3 top-3.5 animate-spin" size={20} />
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    Поиск студентов
+                  </label>
+                  <div className="relative">
+                    <Input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => handleSearchChange(e.target.value)}
+                      placeholder="Введите @username или имя студента..."
+                    />
+                    {isSearching && (
+                      <Loader2 className="absolute right-3 top-3 animate-spin" size={20} />
+                    )}
+                  </div>
+
+                  {searchResults.length > 0 && (
+                    <Card className="mt-2">
+                      <CardContent className="p-0 max-h-48 overflow-y-auto">
+                        {searchResults.map(user => (
+                          <Button
+                            key={user.user_id}
+                            variant="ghost"
+                            onClick={() => addUser(user)}
+                            className="w-full justify-start rounded-none border-b last:border-b-0 h-auto p-4"
+                          >
+                            <div className="text-left">
+                              <div className="font-medium">@{user.username || 'no_username'}</div>
+                              <div className="text-sm text-muted-foreground">{user.first_name || 'No name'}</div>
+                            </div>
+                          </Button>
+                        ))}
+                      </CardContent>
+                    </Card>
                   )}
                 </div>
 
-                {/* Search Results */}
-                {searchResults.length > 0 && (
-                  <div className="mt-2 border border-gray-200 rounded-md max-h-48 overflow-y-auto">
-                    {searchResults.map(user => (
-                      <button
-                        key={user.user_id}
-                        onClick={() => addUser(user)}
-                        className="w-full px-4 py-2 text-left hover:bg-gray-100 border-b last:border-b-0 transition-colors"
+                <div>
+                  <label className="block text-sm font-medium text-foreground mb-2">
+                    Или выберите целый поток
+                  </label>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    {['3rd_stream', '4th_stream', '5th_stream'].map(stream => (
+                      <Button
+                        key={stream}
+                        variant="outline"
+                        onClick={() => loadStreamUsers(stream)}
+                        disabled={loadingStreamUsers !== null}
+                        className="p-4 h-auto flex-col"
                       >
-                        <div className="font-medium">@{user.username || 'no_username'}</div>
-                        <div className="text-sm text-gray-600">{user.first_name || 'No name'}</div>
-                      </button>
+                        <div className="font-semibold text-lg">
+                          {getStreamDisplayName(stream)}
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          {streamStats[stream] || 0} студентов
+                        </div>
+                        {loadingStreamUsers === stream && (
+                          <Loader2 className="mx-auto mt-2 animate-spin" size={16} />
+                        )}
+                      </Button>
                     ))}
+                  </div>
+                </div>
+
+                {selectedUsers.length > 0 && (
+                  <div>
+                    <h3 className="text-sm font-medium text-foreground mb-3">
+                      Выбранные получатели ({selectedUsers.length}):
+                    </h3>
+                    <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
+                      {selectedUsers.map(user => (
+                        <Badge
+                          key={user.user_id}
+                          variant="secondary"
+                          className="px-3 py-1"
+                        >
+                          @{user.username || user.first_name || 'no_name'}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeUser(user.user_id)}
+                            className="ml-2 h-auto p-0 text-muted-foreground hover:text-foreground"
+                          >
+                            <X size={14} />
+                          </Button>
+                        </Badge>
+                      ))}
+                    </div>
                   </div>
                 )}
-              </div>
+              </CardContent>
+            </Card>
 
-              {/* Stream Selection */}
-              <div className="mb-6">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Или выберите целый поток
-                </label>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  {['3rd_stream', '4th_stream', '5th_stream'].map(stream => (
-                    <button
-                      key={stream}
-                      onClick={() => loadStreamUsers(stream)}
-                      disabled={loadingStreamUsers !== null}
-                      className="p-4 border-2 border-gray-200 rounded-lg text-center transition-colors hover:border-blue-300 hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <div className="font-semibold text-lg">
-                        {getStreamDisplayName(stream)}
-                      </div>
-                      <div className="text-sm text-gray-600">
-                        {streamStats[stream] || 0} студентов
-                      </div>
-                      {loadingStreamUsers === stream && (
-                        <Loader2 className="mx-auto mt-2 animate-spin" size={16} />
-                      )}
-                    </button>
-                  ))}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <MessageSquare className="mr-2" size={20} />
+                  Сообщение
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Textarea
+                  value={messageText}
+                  onChange={(e) => setMessageText(e.target.value)}
+                  placeholder="Введите сообщение... Поддерживается HTML форматирование"
+                  rows={8}
+                  className="resize-vertical"
+                />
+                
+                <div className="flex justify-between text-sm text-muted-foreground">
+                  <span>Поддерживается HTML форматирование</span>
+                  <span>{messageText.length}/4096</span>
                 </div>
-              </div>
+              </CardContent>
+            </Card>
 
-              {/* Selected Users Display */}
-              {selectedUsers.length > 0 && (
-                <div>
-                  <h3 className="text-sm font-medium text-gray-700 mb-3">
-                    Выбранные получатели ({selectedUsers.length}):
-                  </h3>
-                  <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto">
-                    {selectedUsers.map(user => (
-                      <span
-                        key={user.user_id}
-                        className="inline-flex items-center px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm"
-                      >
-                        @{user.username || user.first_name || 'no_name'}
-                        <button
-                          onClick={() => removeUser(user.user_id)}
-                          className="ml-2 text-blue-600 hover:text-blue-800 font-bold"
-                        >
-                          ×
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Message Composer */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <h2 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
-                <MessageSquare className="mr-2" size={20} />
-                Сообщение
-              </h2>
-              
-              <textarea
-                value={messageText}
-                onChange={(e) => setMessageText(e.target.value)}
-                placeholder="Введите сообщение... Поддерживается HTML форматирование"
-                rows={8}
-                className="w-full px-4 py-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-vertical"
-              />
-              
-              <div className="mt-2 flex justify-between text-sm text-gray-500">
-                <span>Поддерживается HTML форматирование</span>
-                <span>{messageText.length}/4096</span>
-              </div>
-            </div>
-
-            {/* Send Button */}
             <div className="flex justify-end">
-              <button
+              <Button
                 onClick={handleSendClick}
                 disabled={isSending || selectedUsers.length === 0 || !messageText.trim()}
-                className="inline-flex items-center px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                size="lg"
               >
                 {isSending ? (
                   <>
@@ -348,94 +364,99 @@ export default function SendMessagePage() {
                     Отправить сообщение
                   </>
                 )}
-              </button>
+              </Button>
             </div>
 
-            {/* Error Message */}
             {error && (
-              <div className="bg-red-50 border border-red-200 rounded-md p-4">
-                <div className="text-red-800 font-medium">Ошибка</div>
-                <div className="text-red-700">{error}</div>
-              </div>
+              <Card className="border-destructive bg-destructive/5">
+                <CardContent>
+                  <div className="text-destructive font-medium">Ошибка</div>
+                  <div className="text-destructive">{error}</div>
+                </CardContent>
+              </Card>
             )}
 
-            {/* Send Result */}
             {sendResult && (
-              <div className="bg-green-50 border border-green-200 rounded-md p-4">
-                <div className="text-green-800 font-medium">Сообщение отправлено</div>
-                <div className="text-green-700 mt-1">
-                  Успешно: {sendResult.sent_count}, Неудачно: {sendResult.failed_count}
-                </div>
-                {sendResult.errors && sendResult.errors.length > 0 && (
-                  <div className="mt-2">
-                    <details className="text-sm">
-                      <summary className="cursor-pointer text-orange-700 font-medium">
-                        Ошибки доставки ({sendResult.errors.length})
-                      </summary>
-                      <div className="mt-2 space-y-1">
-                        {sendResult.errors.map((error, index) => (
-                          <div key={index} className="text-orange-600">
-                            User {error.user_id}: {error.error}
-                          </div>
-                        ))}
-                      </div>
-                    </details>
+              <Card className="border-green-200 bg-green-50">
+                <CardContent>
+                  <div className="text-green-800 font-medium">Сообщение отправлено</div>
+                  <div className="text-green-700 mt-1">
+                    Успешно: {sendResult.sent_count}, Неудачно: {sendResult.failed_count}
                   </div>
-                )}
-              </div>
+                  {sendResult.errors && sendResult.errors.length > 0 && (
+                    <div className="mt-2">
+                      <details className="text-sm">
+                        <summary className="cursor-pointer text-orange-700 font-medium">
+                          Ошибки доставки ({sendResult.errors.length})
+                        </summary>
+                        <div className="mt-2 space-y-1">
+                          {sendResult.errors.map((error, index) => (
+                            <div key={index} className="text-orange-600">
+                              User {error.user_id}: {error.error}
+                            </div>
+                          ))}
+                        </div>
+                      </details>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
             )}
 
-            {/* Confirmation Dialog */}
-            {showConfirmDialog && (
-              <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
-                  <h3 className="text-xl font-semibold text-gray-900 mb-4">
-                    Подтвердите отправку сообщения
-                  </h3>
-                  
-                  <div className="mb-4">
-                    <p className="text-gray-700 mb-2">
+            <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+              <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Подтвердите отправку сообщения</DialogTitle>
+                </DialogHeader>
+                
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-foreground mb-2">
                       Вы собираетесь отправить сообщение <strong>{selectedUsers.length}</strong> получателям:
                     </p>
-                    <div className="max-h-32 overflow-y-auto bg-gray-50 rounded p-3">
-                      {selectedUsers.map((user, index) => (
-                        <div key={user.user_id} className="text-sm text-gray-600 mb-1">
-                          {index + 1}. <strong>@{user.username || 'no_username'}</strong>
-                          {user.first_name && (
-                            <span> ({user.first_name})</span>
-                          )}
-                          <span className="text-gray-400"> - ID: {user.user_id}</span>
-                        </div>
-                      ))}
-                    </div>
+                    <Card className="max-h-32 overflow-y-auto bg-muted/50">
+                      <CardContent className="p-3">
+                        {selectedUsers.map((user, index) => (
+                          <div key={user.user_id} className="text-sm text-muted-foreground mb-1">
+                            {index + 1}. <strong>@{user.username || 'no_username'}</strong>
+                            {user.first_name && (
+                              <span> ({user.first_name})</span>
+                            )}
+                            <span className="text-muted-foreground/70"> - ID: {user.user_id}</span>
+                          </div>
+                        ))}
+                      </CardContent>
+                    </Card>
                   </div>
 
-                  <div className="mb-4">
-                    <p className="text-gray-700 font-medium mb-2">Текст сообщения:</p>
-                    <div className="bg-gray-50 rounded p-3 max-h-32 overflow-y-auto">
-                      <p className="text-sm text-gray-800 whitespace-pre-wrap">
-                        {messageText}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex justify-end space-x-3">
-                    <button
-                      onClick={() => setShowConfirmDialog(false)}
-                      className="px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300 transition-colors"
-                    >
-                      Отменить
-                    </button>
-                    <button
-                      onClick={sendMessage}
-                      className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
-                    >
-                      Да, отправить сообщение
-                    </button>
+                  <div>
+                    <p className="text-foreground font-medium mb-2">Текст сообщения:</p>
+                    <Card className="max-h-32 overflow-y-auto bg-muted/50">
+                      <CardContent className="p-3">
+                        <p className="text-sm text-foreground whitespace-pre-wrap">
+                          {messageText}
+                        </p>
+                      </CardContent>
+                    </Card>
                   </div>
                 </div>
-              </div>
-            )}
+
+                <DialogFooter className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowConfirmDialog(false)}
+                  >
+                    Отменить
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    onClick={sendMessage}
+                  >
+                    Да, отправить сообщение
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
       </div>

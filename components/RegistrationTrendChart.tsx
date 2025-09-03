@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { format, subDays, eachDayOfInterval } from 'date-fns';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface FreeLessonRegistration {
   registered_at: string;
@@ -40,49 +42,58 @@ export default function RegistrationTrendChart({ registrations }: RegistrationTr
 
   if (chartData.length === 0) {
     return (
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Registration Trend (30 days)</h3>
-        <div className="animate-pulse h-64 bg-gray-200 rounded"></div>
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Registration Trend (30 days)</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Skeleton className="h-64" />
+        </CardContent>
+      </Card>
     );
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">Registration Trend (30 days)</h3>
-      <div className="h-64">
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={chartData}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis 
-              dataKey="date" 
-              fontSize={12}
-              tick={{ fill: '#6B7280' }}
-            />
-            <YAxis 
-              fontSize={12}
-              tick={{ fill: '#6B7280' }}
-              allowDecimals={false}
-            />
-            <Tooltip 
-              contentStyle={{
-                backgroundColor: '#F9FAFB',
-                border: '1px solid #E5E7EB',
-                borderRadius: '6px'
-              }}
-              labelStyle={{ color: '#374151' }}
-            />
-            <Line 
-              type="monotone" 
-              dataKey="registrations" 
-              stroke="#3B82F6" 
-              strokeWidth={2}
-              dot={{ fill: '#3B82F6', strokeWidth: 2, r: 4 }}
-              activeDot={{ r: 6, stroke: '#3B82F6', strokeWidth: 2 }}
-            />
-          </LineChart>
-        </ResponsiveContainer>
-      </div>
-    </div>
+    <Card>
+      <CardHeader>
+        <CardTitle>Registration Trend (30 days)</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="h-64">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={chartData}>
+              <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+              <XAxis 
+                dataKey="date" 
+                className="stroke-muted-foreground"
+                fontSize={12}
+              />
+              <YAxis 
+                className="stroke-muted-foreground"
+                fontSize={12}
+                allowDecimals={false}
+              />
+              <Tooltip 
+                contentStyle={{
+                  backgroundColor: 'hsl(var(--card))',
+                  border: '1px solid hsl(var(--border))',
+                  borderRadius: '6px',
+                  boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
+                }}
+                labelStyle={{ color: 'hsl(var(--foreground))' }}
+              />
+              <Line 
+                type="monotone" 
+                dataKey="registrations" 
+                stroke="hsl(var(--primary))" 
+                strokeWidth={2}
+                dot={{ fill: 'hsl(var(--primary))', strokeWidth: 2, r: 4 }}
+                activeDot={{ r: 6, stroke: 'hsl(var(--primary))', strokeWidth: 2 }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
