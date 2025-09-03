@@ -20,22 +20,36 @@ interface FreeLessonRegistration {
   lesson_date: string;
 }
 
+interface LessonConversionStats {
+  lesson_type: string;
+  registrations: number;
+  attendances: number;
+  conversion_rate: number;
+}
+
 export default function FreeLessonsPage() {
   const [registrations, setRegistrations] = useState<FreeLessonRegistration[]>([]);
+  const [conversionData, setConversionData] = useState<LessonConversionStats[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchData = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/free-lessons?limit=100');
+      const [registrationsResponse, conversionResponse] = await Promise.all([
+        fetch('/api/free-lessons?limit=100'),
+        fetch('/api/free-lessons-conversion')
+      ]);
       
-      if (!response.ok) {
+      if (!registrationsResponse.ok || !conversionResponse.ok) {
         throw new Error('Failed to fetch free lessons data');
       }
 
-      const data = await response.json();
-      setRegistrations(data);
+      const registrationsData = await registrationsResponse.json();
+      const conversionDataResponse = await conversionResponse.json();
+      
+      setRegistrations(registrationsData);
+      setConversionData(conversionDataResponse);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
@@ -102,7 +116,7 @@ export default function FreeLessonsPage() {
       </div>
 
       {/* Unified Lesson Breakdown */}
-      <UnifiedLessonBreakdown registrations={registrations} />
+      <UnifiedLessonBreakdown registrations={registrations} conversionData={conversionData} />
 
       {/* Registration Trend Chart */}
       <RegistrationTrendChart registrations={registrations} />

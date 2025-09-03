@@ -2,6 +2,13 @@
 
 import { format } from 'date-fns';
 
+interface LessonConversionStats {
+  lesson_type: string;
+  registrations: number;
+  attendances: number;
+  conversion_rate: number;
+}
+
 interface FreeLessonRegistration {
   id: number;
   user_id: number;
@@ -16,9 +23,10 @@ interface FreeLessonRegistration {
 
 interface UnifiedLessonBreakdownProps {
   registrations: FreeLessonRegistration[];
+  conversionData?: LessonConversionStats[];
 }
 
-export default function UnifiedLessonBreakdown({ registrations }: UnifiedLessonBreakdownProps) {
+export default function UnifiedLessonBreakdown({ registrations, conversionData = [] }: UnifiedLessonBreakdownProps) {
   // Group registrations by lesson type and lesson date
   const groupedData = registrations.reduce((acc, reg) => {
     const lessonType = reg.lesson_type || 'Unknown';
@@ -46,6 +54,11 @@ export default function UnifiedLessonBreakdown({ registrations }: UnifiedLessonB
   const sortedLessonTypes = Object.entries(groupedData)
     .sort(([, a], [, b]) => b.totalCount - a.totalCount);
 
+  // Helper function to get conversion data for a lesson type
+  const getConversionData = (lessonType: string) => {
+    return conversionData.find(c => c.lesson_type === lessonType);
+  };
+
   if (sortedLessonTypes.length === 0) {
     return (
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
@@ -71,12 +84,25 @@ export default function UnifiedLessonBreakdown({ registrations }: UnifiedLessonB
                 return b.localeCompare(a);
               });
             
+            const conversionInfo = getConversionData(lessonType);
+            
             return (
               <div key={lessonType} className="border border-gray-200 rounded-lg overflow-hidden">
                 {/* Header with lesson type and total count */}
                 <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
                   <div className="flex items-center justify-between">
-                    <h3 className="font-medium text-gray-900">{lessonType}</h3>
+                    <div>
+                      <h3 className="font-medium text-gray-900">{lessonType}</h3>
+                      {conversionInfo && (
+                        <div className="mt-1 text-xs text-gray-600">
+                          <span className="font-medium text-green-600">{conversionInfo.attendances}</span> присоединились из{' '}
+                          <span className="font-medium text-blue-600">{conversionInfo.registrations}</span> записавшихся 
+                          <span className="ml-2 px-2 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-800">
+                            {conversionInfo.conversion_rate}%
+                          </span>
+                        </div>
+                      )}
+                    </div>
                     <span className="text-lg font-bold text-blue-600">
                       {data.totalCount} регистраций
                     </span>

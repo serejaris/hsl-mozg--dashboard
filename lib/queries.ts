@@ -56,6 +56,13 @@ export interface UserGrowthData {
   newUsers: number;
 }
 
+export interface LessonConversionStats {
+  lesson_type: string;
+  registrations: number;
+  attendances: number;
+  conversion_rate: number;
+}
+
 // Message-related interfaces
 export interface TelegramUser {
   user_id: number;
@@ -355,6 +362,51 @@ export async function getFreeLessonRegistrations(limit: number = 50): Promise<Fr
       notification_sent: row.notification_sent || false,
       lesson_type: row.lesson_type || 'Unknown',
       lesson_date: row.lesson_date ? row.lesson_date.toISOString().split('T')[0] : 'N/A'
+    }));
+  } finally {
+    client.release();
+  }
+}
+
+// Get lesson conversion statistics
+export async function getLessonConversion(): Promise<LessonConversionStats[]> {
+  const client = await pool.connect();
+  try {
+    const result = await client.query(`
+      WITH registrations AS (
+        SELECT 
+          lesson_type,
+          COUNT(*) as registration_count
+        FROM free_lesson_registrations
+        GROUP BY lesson_type
+      ),
+      attendances AS (
+        SELECT 
+          details->>'lesson_type' as lesson_type,
+          COUNT(*) as attendance_count
+        FROM events
+        WHERE event_type = 'lesson_link_clicked'
+          AND details->>'lesson_type' IS NOT NULL
+        GROUP BY details->>'lesson_type'
+      )
+      SELECT 
+        COALESCE(r.lesson_type, a.lesson_type) as lesson_type,
+        COALESCE(r.registration_count, 0) as registrations,
+        COALESCE(a.attendance_count, 0) as attendances,
+        CASE 
+          WHEN COALESCE(r.registration_count, 0) = 0 THEN 0
+          ELSE ROUND((COALESCE(a.attendance_count, 0)::decimal / r.registration_count::decimal) * 100, 1)
+        END as conversion_rate
+      FROM registrations r
+      FULL OUTER JOIN attendances a ON r.lesson_type = a.lesson_type
+      ORDER BY registrations DESC
+    `);
+
+    return result.rows.map(row => ({
+      lesson_type: row.lesson_type,
+      registrations: parseInt(row.registrations),
+      attendances: parseInt(row.attendances),
+      conversion_rate: parseFloat(row.conversion_rate)
     }));
   } finally {
     client.release();

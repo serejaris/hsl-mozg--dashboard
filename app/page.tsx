@@ -225,7 +225,7 @@ export default function Home() {
       )}
 
       {freeLessonData.length > 0 && (
-        <UnifiedLessonBreakdown registrations={freeLessonData} />
+        <UnifiedLessonBreakdown registrations={freeLessonData} conversionData={[]} />
       )}
 
       <div className="bg-red-50 p-1 rounded-lg">

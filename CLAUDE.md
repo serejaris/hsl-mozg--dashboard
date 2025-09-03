@@ -13,6 +13,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is a Next.js 15 TypeScript dashboard for HashSlash School Telegram bot analytics. The application provides monitoring of user interactions, course bookings, and payments through a PostgreSQL database hosted on Railway.
 
+**Important**: This project does NOT use Supabase. It uses Railway-hosted PostgreSQL with standard `pg` driver connection (`lib/db.ts`). Supabase MCP tools are available for debugging but the application itself connects directly to Railway PostgreSQL.
+
 ### Key Architecture Components
 
 **Database Layer (`lib/`)**
