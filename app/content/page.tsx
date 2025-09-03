@@ -64,7 +64,7 @@ export default function ContentPage() {
               Note: Read-only content
             </h3>
             <div className="mt-2 text-sm text-yellow-700">
-              Course content is managed in the bot's <code className="bg-yellow-200 px-1 py-0.5 rounded text-xs">constants.py</code> file. 
+              Course content is managed in the bot&apos;s <code className="bg-yellow-200 px-1 py-0.5 rounded text-xs">constants.py</code> file. 
               Use the copy buttons to quickly grab content for editing.
             </div>
           </div>

@@ -1,6 +1,10 @@
 'use client';
 
 import { useState } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 
 interface Booking {
   id: number;
@@ -23,27 +27,27 @@ const getStatusBadge = (confirmed: number) => {
   switch (confirmed) {
     case 2:
       return (
-        <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+        <Badge variant="default" className="bg-green-100 text-green-800 hover:bg-green-200">
           Подтверждено
-        </span>
+        </Badge>
       );
     case 1:
       return (
-        <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
+        <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 hover:bg-yellow-200">
           В ожидании
-        </span>
+        </Badge>
       );
     case -1:
       return (
-        <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
+        <Badge variant="destructive">
           Отменено
-        </span>
+        </Badge>
       );
     default:
       return (
-        <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">
+        <Badge variant="outline">
           Неизвестно
-        </span>
+        </Badge>
       );
   }
 };
@@ -68,10 +72,10 @@ export default function BookingsTable({ bookings }: BookingsTableProps) {
   });
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-      <div className="p-6 border-b border-gray-200">
+    <Card>
+      <CardHeader>
         <div className="flex justify-between items-center">
-          <h2 className="text-lg font-semibold text-gray-900">Последние бронирования</h2>
+          <CardTitle className="text-lg">Последние бронирования</CardTitle>
           <div className="flex space-x-2">
             {[
               { key: 'all', label: 'Все' },
@@ -79,104 +83,89 @@ export default function BookingsTable({ bookings }: BookingsTableProps) {
               { key: 'pending', label: 'В ожидании' },
               { key: 'cancelled', label: 'Отмененные' }
             ].map(({ key, label }) => (
-              <button
+              <Button
                 key={key}
+                variant={filter === key ? "default" : "ghost"}
+                size="sm"
                 onClick={() => setFilter(key as any)}
-                className={`px-3 py-1 text-sm font-medium rounded-md ${
-                  filter === key
-                    ? 'bg-blue-100 text-blue-700'
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
               >
                 {label}
-              </button>
+              </Button>
             ))}
           </div>
         </div>
-      </div>
+      </CardHeader>
 
-      <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Пользователь
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Курс
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Поток
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Статус
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Скидка
-              </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Дата
-              </th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+      <CardContent>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Пользователь</TableHead>
+              <TableHead>Курс</TableHead>
+              <TableHead>Поток</TableHead>
+              <TableHead>Статус</TableHead>
+              <TableHead>Скидка</TableHead>
+              <TableHead>Дата</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {filteredBookings.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="px-6 py-4 text-center text-gray-500">
+              <TableRow>
+                <TableCell colSpan={6} className="text-center text-muted-foreground">
                   No bookings found
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             ) : (
               filteredBookings.map((booking) => (
-                <tr key={booking.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 whitespace-nowrap">
+                <TableRow key={booking.id}>
+                  <TableCell>
                     <div className="flex flex-col">
-                      <div className="text-sm font-medium text-gray-900">
+                      <div className="text-sm font-medium">
                         {booking.first_name || 'Unknown'}
                       </div>
-                      <div className="text-sm text-gray-500">
+                      <div className="text-sm text-muted-foreground">
                         @{booking.username || 'no_username'}
                       </div>
-                      <div className="text-xs text-gray-400">
+                      <div className="text-xs text-muted-foreground">
                         ID: {booking.user_id}
                       </div>
                     </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">
+                  </TableCell>
+                  <TableCell>
+                    <div className="text-sm">
                       {getCourseNameById(booking.course_id)}
                     </div>
-                    <div className="text-sm text-gray-500">
+                    <div className="text-sm text-muted-foreground">
                       ID: {booking.course_id}
                     </div>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="secondary" className="bg-blue-100 text-blue-800">
                       {booking.course_stream === '3rd_stream' ? '3-й поток' : 
                        booking.course_stream === '4th_stream' ? '4-й поток' : 
                        booking.course_stream || 'N/A'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
                     {getStatusBadge(booking.confirmed)}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  </TableCell>
+                  <TableCell>
                     {booking.discount_percent > 0 ? (
                       <div className="flex flex-col">
                         <span className="text-sm font-medium text-green-600">
                           -{booking.discount_percent}%
                         </span>
                         {booking.referral_code && (
-                          <span className="text-xs text-gray-500">
+                          <span className="text-xs text-muted-foreground">
                             {booking.referral_code}
                           </span>
                         )}
                       </div>
                     ) : (
-                      <span className="text-sm text-gray-500">No discount</span>
+                      <span className="text-sm text-muted-foreground">No discount</span>
                     )}
-                  </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  </TableCell>
+                  <TableCell className="text-sm text-muted-foreground">
                     {new Date(booking.created_at).toLocaleDateString('ru-RU', {
                       day: '2-digit',
                       month: '2-digit',
@@ -184,19 +173,17 @@ export default function BookingsTable({ bookings }: BookingsTableProps) {
                       hour: '2-digit',
                       minute: '2-digit'
                     })}
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))
             )}
-          </tbody>
-        </table>
-      </div>
+          </TableBody>
+        </Table>
 
-      <div className="px-6 py-3 bg-gray-50 border-t border-gray-200">
-        <div className="text-sm text-gray-500">
+        <div className="mt-4 text-sm text-muted-foreground">
           Showing {filteredBookings.length} of {bookings.length} bookings
         </div>
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 }

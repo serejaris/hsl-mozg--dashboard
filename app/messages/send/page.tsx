@@ -3,6 +3,12 @@
 import { useState, useEffect } from 'react';
 import { Send, Users, MessageSquare, Loader2 } from 'lucide-react';
 import MessagesNavigation from '@/components/MessagesNavigation';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 
 interface TelegramUser {
   user_id: number;

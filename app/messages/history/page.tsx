@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { RefreshCw, MessageSquare, Users, Clock, CheckCircle, XCircle } from 'lucide-react';
 import MessagesNavigation from '@/components/MessagesNavigation';
 
@@ -33,7 +33,7 @@ export default function MessageHistoryPage() {
   // Filter states
   const [activeFilter, setActiveFilter] = useState<'all' | 'individual' | '3rd_stream' | '4th_stream' | '5th_stream'>('all');
 
-  const fetchMessages = async () => {
+  const fetchMessages = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -63,7 +63,7 @@ export default function MessageHistoryPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [activeFilter]);
 
   const fetchRecipients = async (messageId: number) => {
     setLoadingRecipients(true);
@@ -103,7 +103,7 @@ export default function MessageHistoryPage() {
 
   useEffect(() => {
     fetchMessages();
-  }, [activeFilter]);
+  }, [fetchMessages]);
 
   return (
     <div className="min-h-screen bg-gray-50">
