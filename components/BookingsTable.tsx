@@ -24,25 +24,25 @@ const getStatusBadge = (confirmed: number) => {
     case 2:
       return (
         <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
-          Confirmed
+          Подтверждено
         </span>
       );
     case 1:
       return (
         <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">
-          Pending
+          В ожидании
         </span>
       );
     case -1:
       return (
         <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">
-          Cancelled
+          Отменено
         </span>
       );
     default:
       return (
         <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">
-          Unknown
+          Неизвестно
         </span>
       );
   }
@@ -71,19 +71,24 @@ export default function BookingsTable({ bookings }: BookingsTableProps) {
     <div className="bg-white rounded-lg shadow-sm border border-gray-200">
       <div className="p-6 border-b border-gray-200">
         <div className="flex justify-between items-center">
-          <h2 className="text-lg font-semibold text-gray-900">Recent Bookings</h2>
+          <h2 className="text-lg font-semibold text-gray-900">Последние бронирования</h2>
           <div className="flex space-x-2">
-            {['all', 'confirmed', 'pending', 'cancelled'].map((status) => (
+            {[
+              { key: 'all', label: 'Все' },
+              { key: 'confirmed', label: 'Подтвержденные' },
+              { key: 'pending', label: 'В ожидании' },
+              { key: 'cancelled', label: 'Отмененные' }
+            ].map(({ key, label }) => (
               <button
-                key={status}
-                onClick={() => setFilter(status as any)}
+                key={key}
+                onClick={() => setFilter(key as any)}
                 className={`px-3 py-1 text-sm font-medium rounded-md ${
-                  filter === status
+                  filter === key
                     ? 'bg-blue-100 text-blue-700'
                     : 'text-gray-500 hover:text-gray-700'
                 }`}
               >
-                {status.charAt(0).toUpperCase() + status.slice(1)}
+                {label}
               </button>
             ))}
           </div>
@@ -95,22 +100,22 @@ export default function BookingsTable({ bookings }: BookingsTableProps) {
           <thead className="bg-gray-50">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                User
+                Пользователь
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Course
+                Курс
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Stream
+                Поток
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Status
+                Статус
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Discount
+                Скидка
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Date
+                Дата
               </th>
             </tr>
           </thead>

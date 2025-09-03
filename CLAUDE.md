@@ -224,3 +224,57 @@ Use Railway MCP tools when you need to:
 - Investigate actual database schema
 - Check production data structure
 - Debug database connection issues
+
+## Git Workflow
+
+**Git Worktree Management**
+All git worktrees in this project MUST follow these strict rules for consistent workspace management:
+
+1. **Worktree Location**: Always create worktrees in the `.trees/` directory
+   ```bash
+   # Correct - create worktree in .trees/ folder
+   git worktree add .trees/feature-branch feature-branch
+   git worktree add .trees/bugfix-123 -b bugfix-123
+   
+   # Incorrect - do not create worktrees in root or other locations
+   git worktree add ../feature-branch feature-branch
+   ```
+
+2. **Post-Merge Cleanup**: After successfully merging a worktree branch, always remove the worktree
+   ```bash
+   # After successful merge, remove the worktree
+   git worktree remove .trees/feature-branch
+   
+   # Or use force flag if needed
+   git worktree remove --force .trees/feature-branch
+   ```
+
+3. **Complete Workflow Example**:
+   ```bash
+   # 1. Create new worktree in .trees/
+   git worktree add .trees/new-feature -b new-feature
+   
+   # 2. Work in the worktree
+   cd .trees/new-feature
+   # ... make changes, commit ...
+   
+   # 3. Switch back to main branch
+   cd ../../  # Return to project root
+   git checkout main
+   
+   # 4. Merge the feature branch
+   git merge new-feature
+   
+   # 5. Clean up - remove worktree after successful merge
+   git worktree remove .trees/new-feature
+   
+   # 6. Delete the feature branch (optional)
+   git branch -d new-feature
+   ```
+
+**Why These Rules:**
+- Keeps all worktrees organized in a single `.trees/` folder
+- Prevents workspace clutter and confusion
+- Ensures clean project structure
+- Makes worktree management predictable and scriptable
+- The `.trees/` folder is already in .gitignore to prevent accidental commits

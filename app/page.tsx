@@ -181,12 +181,12 @@ export default function Home() {
   const isRefreshing = tier1Loading || tier2Loading || tier3Loading;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-900">Funnel Dashboard</h1>
+        <h1 className="text-2xl font-bold text-gray-900">Дашборд воронки</h1>
         <div className="flex items-center gap-4">
           <div className="text-sm text-gray-500">
-            Last updated: {new Date().toLocaleTimeString('ru-RU')}
+            Обновлено: {new Date().toLocaleTimeString('ru-RU')}
           </div>
           <button
             onClick={refreshAllData}
@@ -194,57 +194,53 @@ export default function Home() {
             className="flex items-center gap-2 px-3 py-1 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-            Refresh All
+            Обновить
           </button>
         </div>
       </div>
 
-      {/* TOP PRIORITY - Core Metrics */}
       {stats && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           <MetricCard
-            title="Total Users"
+            title="Всего пользователей"
             value={stats.totalUsers}
             icon={Users}
-            description="User base"
           />
           <MetricCard
-            title="Free Lesson Signups"
+            title="Записи на бесплатные уроки"
             value={stats.freeLessonRegistrations}
             icon={GraduationCap}
-            description="Funnel entry point"
           />
           <MetricCard
-            title="Active Bookings"
+            title="Активные бронирования"
             value={stats.activeBookings}
             icon={Calendar}
-            description="Course registrations"
           />
           <MetricCard
-            title="Confirmed Payments"
+            title="Подтвержденные платежи"
             value={stats.confirmedPayments}
             icon={CheckCircle}
-            description="Successful conversions"
           />
         </div>
       )}
 
-      {/* Hot Leads - ACTION ITEMS */}
+      {freeLessonData.length > 0 && (
+        <UnifiedLessonBreakdown registrations={freeLessonData} />
+      )}
+
       <div className="bg-red-50 p-1 rounded-lg">
         <HotLeads />
       </div>
 
-      {/* MEDIUM PRIORITY - Current State */}
       {courseStreamStats.length > 0 && (
         <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Активные потоки курсов</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {courseStreamStats.map((stream) => (
               <div key={`${stream.courseId}-${stream.courseStream}`} className="flex justify-between items-center p-4 bg-gray-50 rounded-lg">
                 <div>
                   <h3 className="font-medium text-gray-900">{stream.courseName}</h3>
                   <p className="text-sm text-gray-600">{stream.courseStream}</p>
-                  <p className="text-xs text-gray-500">Confirmed: {stream.confirmed}</p>
+                  <p className="text-xs text-gray-500">Подтверждено: {stream.confirmed}</p>
                 </div>
                 <div className="text-right">
                   <p className="text-2xl font-bold text-blue-600">{stream.total}</p>
@@ -261,23 +257,18 @@ export default function Home() {
         <BookingsTable bookings={bookings} />
       )}
 
-      {/* LOWER PRIORITY - Analytics */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* User Growth Chart */}
-        {userGrowthData.length > 0 && (
-          <UserGrowthChart data={userGrowthData} />
-        )}
+          {/* User Growth Chart */}
+          {userGrowthData.length > 0 && (
+            <UserGrowthChart data={userGrowthData} />
+          )}
 
-        {/* Registration Trend */}
-        {freeLessonData.length > 0 && (
-          <RegistrationTrendChart registrations={freeLessonData} />
-        )}
-      </div>
+          {/* Registration Trend */}
+          {freeLessonData.length > 0 && (
+            <RegistrationTrendChart registrations={freeLessonData} />
+          )}
+        </div>
 
-      {/* Lesson Breakdown */}
-      {freeLessonData.length > 0 && (
-        <UnifiedLessonBreakdown registrations={freeLessonData} />
-      )}
     </div>
   );
 }
