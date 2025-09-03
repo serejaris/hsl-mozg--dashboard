@@ -2,6 +2,11 @@
 
 import { useState } from 'react';
 import { Copy, DollarSign, Calendar, CheckCircle, XCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+
 
 // Course data from constants.py - hardcoded for now
 const COURSES = [
@@ -31,12 +36,14 @@ export default function ContentPage() {
   };
 
   const CopyButton = ({ text, fieldName }: { text: string; fieldName: string }) => (
-    <button
+    <Button
+      variant="ghost"
+      size="sm"
       onClick={() => copyToClipboard(text, fieldName)}
-      className={`ml-2 p-1 rounded transition-colors ${
+      className={`ml-2 h-8 w-8 p-0 ${
         copiedField === fieldName
           ? 'text-green-600 bg-green-100'
-          : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
+          : 'text-muted-foreground hover:text-foreground'
       }`}
       title="Copy to clipboard"
     >
@@ -45,54 +52,50 @@ export default function ContentPage() {
       ) : (
         <Copy className="h-4 w-4" />
       )}
-    </button>
+    </Button>
   );
 
   return (
-    <div className="space-y-6">
+    <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-900">Course Content Management</h1>
-        <div className="text-sm text-gray-500">
+        <h1 className="text-2xl font-bold text-foreground">Course Content Management</h1>
+        <div className="text-sm text-muted-foreground">
           Source: constants.py
         </div>
       </div>
 
-      <div className="bg-yellow-50 border border-yellow-200 rounded-md p-4">
-        <div className="flex">
-          <div className="ml-3">
-            <h3 className="text-sm font-medium text-yellow-800">
-              Note: Read-only content
-            </h3>
-            <div className="mt-2 text-sm text-yellow-700">
-              Course content is managed in the bot&apos;s <code className="bg-yellow-200 px-1 py-0.5 rounded text-xs">constants.py</code> file. 
-              Use the copy buttons to quickly grab content for editing.
-            </div>
-          </div>
-        </div>
-      </div>
+      <Alert className="border-amber-200 bg-amber-50">
+        <AlertTitle className="text-amber-800">
+          Note: Read-only content
+        </AlertTitle>
+        <AlertDescription className="text-amber-700">
+          Course content is managed in the bot&apos;s <code className="bg-amber-200 px-1 py-0.5 rounded text-xs">constants.py</code> file. 
+          Use the copy buttons to quickly grab content for editing.
+        </AlertDescription>
+      </Alert>
 
       {COURSES.map((course) => (
-        <div key={course.id} className="bg-white rounded-lg shadow-sm border border-gray-200">
-          <div className="p-6 border-b border-gray-200">
+        <Card key={course.id}>
+          <CardHeader>
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
-                <h2 className="text-lg font-semibold text-gray-900">{course.name}</h2>
-                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                <CardTitle className="text-lg">{course.name}</CardTitle>
+                <Badge variant="outline">
                   ID: {course.id}
-                </span>
+                </Badge>
                 {course.is_active ? (
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                  <Badge variant="default" className="bg-green-100 text-green-800 border-green-300">
                     <CheckCircle className="h-3 w-3 mr-1" />
                     Active
-                  </span>
+                  </Badge>
                 ) : (
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                  <Badge variant="destructive">
                     <XCircle className="h-3 w-3 mr-1" />
                     Inactive
-                  </span>
+                  </Badge>
                 )}
               </div>
-              <div className="flex items-center space-x-4 text-sm text-gray-500">
+              <div className="flex items-center space-x-4 text-sm text-muted-foreground">
                 <div className="flex items-center">
                   <DollarSign className="h-4 w-4 mr-1" />
                   ${course.price_usd}
@@ -103,91 +106,107 @@ export default function ContentPage() {
                 </div>
               </div>
             </div>
-          </div>
+          </CardHeader>
 
-          <div className="p-6 space-y-6">
-            {/* Button Text */}
+          <CardContent className="space-y-4">
             <div>
               <div className="flex items-center mb-2">
-                <label className="text-sm font-medium text-gray-700">Button Text</label>
+                <label className="text-sm font-medium text-foreground">Button Text</label>
                 <CopyButton text={course.button_text} fieldName={`button-${course.id}`} />
               </div>
-              <div className="p-3 bg-gray-50 rounded-md text-sm text-gray-900 font-mono">
-                {course.button_text}
-              </div>
+              <Card className="bg-muted/50">
+                <CardContent className="p-3">
+                  <div className="text-sm text-foreground font-mono">
+                    {course.button_text}
+                  </div>
+                </CardContent>
+              </Card>
             </div>
 
-            {/* Description */}
             <div>
               <div className="flex items-center mb-2">
-                <label className="text-sm font-medium text-gray-700">Description</label>
+                <label className="text-sm font-medium text-foreground">Description</label>
                 <CopyButton text={course.description} fieldName={`description-${course.id}`} />
               </div>
-              <div className="p-4 bg-gray-50 rounded-md text-sm text-gray-900 font-mono whitespace-pre-wrap max-h-96 overflow-y-auto">
-                {course.description}
-              </div>
+              <Card className="bg-muted/50">
+                <CardContent className="p-4 max-h-96 overflow-y-auto">
+                  <div className="text-sm text-foreground font-mono whitespace-pre-wrap">
+                    {course.description}
+                  </div>
+                </CardContent>
+              </Card>
             </div>
 
-            {/* Pricing Details */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="grid gap-6 md:grid-cols-3">
               <div>
-                <label className="text-sm font-medium text-gray-700 mb-2 flex items-center">
+                <label className="text-sm font-medium text-foreground mb-2 flex items-center">
                   Price (USD)
                   <CopyButton text={course.price_usd.toString()} fieldName={`price-usd-${course.id}`} />
                 </label>
-                <div className="p-3 bg-blue-50 rounded-md text-sm text-blue-900 font-mono">
-                  ${course.price_usd}
-                </div>
+                <Card className="bg-blue-50 border-blue-200">
+                  <CardContent className="p-3">
+                    <div className="text-sm text-blue-900 font-mono">
+                      ${course.price_usd}
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-700 mb-2 flex items-center">
+                <label className="text-sm font-medium text-foreground mb-2 flex items-center">
                   Price (Cents)
                   <CopyButton text={course.price_usd_cents.toString()} fieldName={`price-cents-${course.id}`} />
                 </label>
-                <div className="p-3 bg-blue-50 rounded-md text-sm text-blue-900 font-mono">
-                  {course.price_usd_cents}
-                </div>
+                <Card className="bg-blue-50 border-blue-200">
+                  <CardContent className="p-3">
+                    <div className="text-sm text-blue-900 font-mono">
+                      {course.price_usd_cents}
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
               <div>
-                <label className="text-sm font-medium text-gray-700 mb-2 flex items-center">
+                <label className="text-sm font-medium text-foreground mb-2 flex items-center">
                   Start Date
                   <CopyButton text={course.start_date_text} fieldName={`date-${course.id}`} />
                 </label>
-                <div className="p-3 bg-green-50 rounded-md text-sm text-green-900 font-mono">
-                  {course.start_date_text}
-                </div>
+                <Card className="bg-green-50 border-green-200">
+                  <CardContent className="p-3">
+                    <div className="text-sm text-green-900 font-mono">
+                      {course.start_date_text}
+                    </div>
+                  </CardContent>
+                </Card>
               </div>
             </div>
 
-            {/* JSON Structure */}
             <div>
               <div className="flex items-center mb-2">
-                <label className="text-sm font-medium text-gray-700">Full JSON Structure</label>
+                <label className="text-sm font-medium text-foreground">Full JSON Structure</label>
                 <CopyButton text={JSON.stringify(course, null, 2)} fieldName={`json-${course.id}`} />
               </div>
-              <div className="p-4 bg-gray-900 rounded-md text-sm text-green-400 font-mono whitespace-pre overflow-x-auto max-h-64 overflow-y-auto">
-                {JSON.stringify(course, null, 2)}
-              </div>
+              <Card className="bg-slate-900 border-slate-800">
+                <CardContent className="p-4 max-h-64 overflow-x-auto overflow-y-auto">
+                  <pre className="text-sm text-green-400 font-mono whitespace-pre">
+                    {JSON.stringify(course, null, 2)}
+                  </pre>
+                </CardContent>
+              </Card>
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       ))}
 
-      <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
-        <div className="flex">
-          <div className="ml-3">
-            <h3 className="text-sm font-medium text-blue-800">
-              How to update course content
-            </h3>
-            <div className="mt-2 text-sm text-blue-700 space-y-2">
-              <p>1. Copy the desired content using the copy buttons above</p>
-              <p>2. Edit the <code className="bg-blue-200 px-1 py-0.5 rounded text-xs">constants.py</code> file in your bot project</p>
-              <p>3. Update the COURSES array with your changes</p>
-              <p>4. Restart the bot to apply changes</p>
-            </div>
-          </div>
-        </div>
-      </div>
+      <Alert className="border-blue-200 bg-blue-50">
+        <AlertTitle className="text-blue-800">
+          How to update course content
+        </AlertTitle>
+        <AlertDescription className="text-blue-700 space-y-2">
+          <p>1. Copy the desired content using the copy buttons above</p>
+          <p>2. Edit the <code className="bg-blue-200 px-1 py-0.5 rounded text-xs">constants.py</code> file in your bot project</p>
+          <p>3. Update the COURSES array with your changes</p>
+          <p>4. Restart the bot to apply changes</p>
+        </AlertDescription>
+      </Alert>
     </div>
   );
 }

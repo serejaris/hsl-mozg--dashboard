@@ -3,6 +3,10 @@
 import { useEffect, useState, useCallback } from 'react';
 import { RefreshCw, MessageSquare, Users, Clock, CheckCircle, XCircle } from 'lucide-react';
 import MessagesNavigation from '@/components/MessagesNavigation';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+
 
 interface MessageHistory {
   id: number;
@@ -106,204 +110,203 @@ export default function MessageHistoryPage() {
   }, [fetchMessages]);
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background">
       <MessagesNavigation />
-      <div className="p-8">
+      <div className="p-6 space-y-6">
         <div className="max-w-6xl mx-auto">
-        <div className="mb-8 flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">
-              История сообщений
-            </h1>
-            <p className="text-gray-600">
-              Просмотр отправленных сообщений и статистики доставки
-            </p>
-          </div>
-          <button
-            onClick={fetchMessages}
-            disabled={loading}
-            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:bg-gray-400 transition-colors"
-          >
-            <RefreshCw 
-              className={`mr-2 ${loading ? 'animate-spin' : ''}`} 
-              size={18} 
-            />
-            Обновить
-          </button>
-        </div>
-
-        {/* Filters */}
-        <div className="mb-6 bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-          <h3 className="text-lg font-medium text-gray-900 mb-3">Фильтры</h3>
-          <div className="flex flex-wrap gap-2">
-            {[
-              { key: 'all', label: 'Все сообщения' },
-              { key: 'individual', label: 'Индивидуальные' },
-              { key: '3rd_stream', label: '3-й поток' },
-              { key: '4th_stream', label: '4-й поток' },
-              { key: '5th_stream', label: '5-й поток' }
-            ].map(filter => (
-              <button
-                key={filter.key}
-                onClick={() => setActiveFilter(filter.key as any)}
-                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${
-                  activeFilter === filter.key
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                {filter.label}
-                {activeFilter === filter.key && (
-                  <span className="ml-2 text-xs bg-white/20 px-1.5 py-0.5 rounded">
-                    {messages.length}
-                  </span>
-                )}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {error && (
-          <div className="bg-red-50 border border-red-200 rounded-md p-4 mb-6">
-            <div className="text-red-800 font-medium">Ошибка</div>
-            <div className="text-red-700">{error}</div>
-          </div>
-        )}
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Messages List */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-            <div className="p-4 border-b border-gray-200">
-              <h2 className="text-xl font-semibold text-gray-900 flex items-center">
-                <MessageSquare className="mr-2" size={20} />
-                Отправленные сообщения ({messages.length})
-              </h2>
+          <div className="mb-8 flex justify-between items-center">
+            <div>
+              <h1 className="text-3xl font-bold text-foreground mb-2">
+                История сообщений
+              </h1>
+              <p className="text-muted-foreground">
+                Просмотр отправленных сообщений и статистики доставки
+              </p>
             </div>
-            <div className="max-h-96 overflow-y-auto">
-              {loading ? (
-                <div className="p-8 text-center text-gray-500">
-                  <RefreshCw className="animate-spin mx-auto mb-2" size={24} />
-                  Загрузка...
-                </div>
-              ) : messages.length === 0 ? (
-                <div className="p-8 text-center text-gray-500">
-                  Сообщений пока нет
-                </div>
-              ) : (
-                messages.map((message) => (
-                  <div
-                    key={message.id}
-                    onClick={() => handleMessageClick(message)}
-                    className={`p-4 border-b last:border-b-0 cursor-pointer hover:bg-gray-50 transition-colors ${
-                      selectedMessage?.id === message.id ? 'bg-blue-50 border-l-4 border-l-blue-500' : ''
-                    }`}
+            <Button
+              onClick={fetchMessages}
+              disabled={loading}
+              size="sm"
+            >
+              <RefreshCw 
+                className={`mr-2 ${loading ? 'animate-spin' : ''}`} 
+                size={18} 
+              />
+              Обновить
+            </Button>
+          </div>
+
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle>Фильтры</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { key: 'all', label: 'Все сообщения' },
+                  { key: 'individual', label: 'Индивидуальные' },
+                  { key: '3rd_stream', label: '3-й поток' },
+                  { key: '4th_stream', label: '4-й поток' },
+                  { key: '5th_stream', label: '5-й поток' }
+                ].map(filter => (
+                  <Button
+                    key={filter.key}
+                    variant={activeFilter === filter.key ? 'default' : 'outline'}
+                    size="sm"
+                    onClick={() => setActiveFilter(filter.key as any)}
                   >
-                    <div className="flex justify-between items-start mb-2">
-                      <div className="text-sm text-gray-500 flex items-center">
-                        <Clock className="mr-1" size={14} />
-                        {formatDate(message.sent_at)}
-                      </div>
-                      <div className="flex items-center space-x-2 text-xs">
-                        <span className="flex items-center text-green-600">
-                          <CheckCircle className="mr-1" size={12} />
-                          {message.successful_deliveries}
-                        </span>
-                        <span className="flex items-center text-red-600">
-                          <XCircle className="mr-1" size={12} />
-                          {message.total_recipients - message.successful_deliveries}
-                        </span>
-                      </div>
-                    </div>
-                    <div className="text-sm text-gray-900 mb-2">
-                      {truncateText(message.message_text)}
-                    </div>
-                    <div className="text-xs text-gray-500 flex items-center">
-                      <Users className="mr-1" size={12} />
-                      {message.total_recipients} получателей
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
+                    {filter.label}
+                    {activeFilter === filter.key && (
+                      <Badge variant="secondary" className="ml-2">
+                        {messages.length}
+                      </Badge>
+                    )}
+                  </Button>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
 
-          {/* Message Details */}
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-            <div className="p-4 border-b border-gray-200">
-              <h2 className="text-xl font-semibold text-gray-900 flex items-center">
-                <Users className="mr-2" size={20} />
-                Детали доставки
-              </h2>
-            </div>
-            <div className="max-h-96 overflow-y-auto">
-              {!selectedMessage ? (
-                <div className="p-8 text-center text-gray-500">
-                  Выберите сообщение для просмотра деталей
-                </div>
-              ) : (
-                <div>
-                  {/* Message Preview */}
-                  <div className="p-4 border-b border-gray-200 bg-gray-50">
-                    <div className="text-sm text-gray-600 mb-2">
-                      Отправлено: {formatDate(selectedMessage.sent_at)}
-                    </div>
-                    <div className="text-sm text-gray-900 whitespace-pre-wrap">
-                      {selectedMessage.message_text}
-                    </div>
-                    <div className="mt-3 flex space-x-4 text-xs">
-                      <span className="flex items-center text-green-600">
-                        <CheckCircle className="mr-1" size={12} />
-                        Доставлено: {selectedMessage.successful_deliveries}
-                      </span>
-                      <span className="flex items-center text-red-600">
-                        <XCircle className="mr-1" size={12} />
-                        Не доставлено: {selectedMessage.total_recipients - selectedMessage.successful_deliveries}
-                      </span>
-                    </div>
-                  </div>
+          {error && (
+            <Card className="mb-6 border-destructive bg-destructive/5">
+              <CardContent>
+                <div className="text-destructive font-medium">Ошибка</div>
+                <div className="text-destructive">{error}</div>
+              </CardContent>
+            </Card>
+          )}
 
-                  {/* Recipients List */}
-                  {loadingRecipients ? (
-                    <div className="p-8 text-center text-gray-500">
-                      <RefreshCw className="animate-spin mx-auto mb-2" size={24} />
-                      Загрузка получателей...
-                    </div>
-                  ) : (
-                    <div className="divide-y divide-gray-100">
-                      {recipients.map((recipient) => (
-                        <div key={recipient.id} className="p-3">
-                          <div className="flex justify-between items-center">
-                            <div>
-                              <div className="text-sm font-medium text-gray-900">
-                                @{recipient.username || 'no_username'}
-                              </div>
-                              <div className="text-xs text-gray-500">
-                                ID: {recipient.user_id}
-                              </div>
-                            </div>
-                            <div className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                              recipient.delivery_status === 'sent' 
-                                ? 'bg-green-100 text-green-800' 
-                                : recipient.delivery_status === 'failed'
-                                ? 'bg-red-100 text-red-800'
-                                : 'bg-yellow-100 text-yellow-800'
-                            }`}>
-                              {recipient.delivery_status === 'sent' && <CheckCircle className="mr-1" size={12} />}
-                              {recipient.delivery_status === 'failed' && <XCircle className="mr-1" size={12} />}
-                              {recipient.delivery_status === 'sent' ? 'Доставлено' : 
-                               recipient.delivery_status === 'failed' ? 'Не доставлено' : 
-                               'Ожидание'}
-                            </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <MessageSquare className="mr-2" size={20} />
+                  Отправленные сообщения ({messages.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0 max-h-96 overflow-y-auto">
+                {loading ? (
+                  <div className="p-8 text-center text-muted-foreground">
+                    <RefreshCw className="animate-spin mx-auto mb-2" size={24} />
+                    Загрузка...
+                  </div>
+                ) : messages.length === 0 ? (
+                  <div className="p-8 text-center text-muted-foreground">
+                    Сообщений пока нет
+                  </div>
+                ) : (
+                  messages.map((message) => (
+                    <Button
+                      key={message.id}
+                      variant="ghost"
+                      onClick={() => handleMessageClick(message)}
+                      className={`w-full justify-start rounded-none border-b last:border-b-0 h-auto p-4 ${
+                        selectedMessage?.id === message.id ? 'bg-accent border-l-4 border-l-primary' : ''
+                      }`}
+                    >
+                      <div className="w-full">
+                        <div className="flex justify-between items-start mb-2">
+                          <div className="text-sm text-muted-foreground flex items-center">
+                            <Clock className="mr-1" size={14} />
+                            {formatDate(message.sent_at)}
+                          </div>
+                          <div className="flex items-center space-x-2 text-xs">
+                            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                              <CheckCircle className="mr-1" size={12} />
+                              {message.successful_deliveries}
+                            </Badge>
+                            <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
+                              <XCircle className="mr-1" size={12} />
+                              {message.total_recipients - message.successful_deliveries}
+                            </Badge>
                           </div>
                         </div>
-                      ))}
+                        <div className="text-sm text-foreground mb-2 text-left">
+                          {truncateText(message.message_text)}
+                        </div>
+                        <div className="text-xs text-muted-foreground flex items-center">
+                          <Users className="mr-1" size={12} />
+                          {message.total_recipients} получателей
+                        </div>
+                      </div>
+                    </Button>
+                  ))
+                )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Users className="mr-2" size={20} />
+                  Детали доставки
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0 max-h-96 overflow-y-auto">
+                {!selectedMessage ? (
+                  <div className="p-8 text-center text-muted-foreground">
+                    Выберите сообщение для просмотра деталей
+                  </div>
+                ) : (
+                  <div>
+                    <div className="p-4 border-b border-border bg-muted/50">
+                      <div className="text-sm text-muted-foreground mb-2">
+                        Отправлено: {formatDate(selectedMessage.sent_at)}
+                      </div>
+                      <div className="text-sm text-foreground whitespace-pre-wrap">
+                        {selectedMessage.message_text}
+                      </div>
+                      <div className="mt-3 flex space-x-4 text-xs">
+                        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
+                          <CheckCircle className="mr-1" size={12} />
+                          Доставлено: {selectedMessage.successful_deliveries}
+                        </Badge>
+                        <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">
+                          <XCircle className="mr-1" size={12} />
+                          Не доставлено: {selectedMessage.total_recipients - selectedMessage.successful_deliveries}
+                        </Badge>
+                      </div>
                     </div>
-                  )}
-                </div>
-              )}
-            </div>
+
+                    {loadingRecipients ? (
+                      <div className="p-8 text-center text-muted-foreground">
+                        <RefreshCw className="animate-spin mx-auto mb-2" size={24} />
+                        Загрузка получателей...
+                      </div>
+                    ) : (
+                      <div className="divide-y divide-border">
+                        {recipients.map((recipient) => (
+                          <div key={recipient.id} className="p-3">
+                            <div className="flex justify-between items-center">
+                              <div>
+                                <div className="text-sm font-medium text-foreground">
+                                  @{recipient.username || 'no_username'}
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                  ID: {recipient.user_id}
+                                </div>
+                              </div>
+                              <Badge
+                                variant={recipient.delivery_status === 'sent' ? 'default' : 
+                                        recipient.delivery_status === 'failed' ? 'destructive' : 'secondary'}
+                                className="text-xs"
+                              >
+                                {recipient.delivery_status === 'sent' && <CheckCircle className="mr-1" size={12} />}
+                                {recipient.delivery_status === 'failed' && <XCircle className="mr-1" size={12} />}
+                                {recipient.delivery_status === 'sent' ? 'Доставлено' : 
+                                 recipient.delivery_status === 'failed' ? 'Не доставлено' : 
+                                 'Ожидание'}
+                              </Badge>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
-        </div>
         </div>
       </div>
     </div>

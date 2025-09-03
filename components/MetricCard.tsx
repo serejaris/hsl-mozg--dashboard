@@ -1,5 +1,5 @@
 import { LucideIcon } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, CardAction } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 interface MetricCardProps {
   title: string;
@@ -21,13 +21,11 @@ export default function MetricCard({
 }: MetricCardProps) {
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
-        <CardAction>
-          <div className="p-3 bg-primary/10 rounded-lg">
-            <Icon className="h-6 w-6 text-primary" />
-          </div>
-        </CardAction>
+        <div className="p-3 bg-primary/10 rounded-lg">
+          <Icon className="h-6 w-6 text-primary" />
+        </div>
       </CardHeader>
       <CardContent>
         <p className="text-2xl font-bold">{value}</p>

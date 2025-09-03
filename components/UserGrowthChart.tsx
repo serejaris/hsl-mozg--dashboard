@@ -2,6 +2,7 @@
 
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { spacing } from '@/lib/utils';
 
 interface UserGrowthData {
   date: string;
@@ -32,17 +33,17 @@ export default function UserGrowthChart({ data }: UserGrowthChartProps) {
         <div className="h-80">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={formattedData}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+            <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
             <XAxis 
               dataKey="date" 
-              stroke="#6b7280"
+              className="stroke-muted-foreground"
               fontSize={12}
             />
-            <YAxis stroke="#6b7280" fontSize={12} />
+            <YAxis className="stroke-muted-foreground" fontSize={12} />
             <Tooltip 
               contentStyle={{
-                backgroundColor: 'white',
-                border: '1px solid #e5e7eb',
+                backgroundColor: 'hsl(var(--card))',
+                border: '1px solid hsl(var(--border))',
                 borderRadius: '6px',
                 boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
               }}
@@ -55,10 +56,10 @@ export default function UserGrowthChart({ data }: UserGrowthChartProps) {
             <Line 
               type="monotone" 
               dataKey="totalUsers" 
-              stroke="#3b82f6" 
+              stroke="hsl(var(--primary))" 
               strokeWidth={3}
               name="totalUsers"
-              dot={{ fill: '#3b82f6', strokeWidth: 2, r: 4 }}
+              dot={{ fill: 'hsl(var(--primary))', strokeWidth: 2, r: 4 }}
             />
             <Line 
               type="monotone" 
@@ -73,7 +74,7 @@ export default function UserGrowthChart({ data }: UserGrowthChartProps) {
         </div>
         <div className="mt-4 flex items-center gap-6 text-sm">
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+            <div className="w-3 h-3 bg-primary rounded-full"></div>
             <span className="text-muted-foreground">Всего пользователей</span>
           </div>
           <div className="flex items-center gap-2">

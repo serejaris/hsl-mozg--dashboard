@@ -183,7 +183,7 @@ export default function Home() {
   const isRefreshing = tier1Loading || tier2Loading || tier3Loading;
 
   return (
-    <div className="space-y-8">
+    <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-foreground">Дашборд воронки</h1>
         <div className="flex items-center gap-4">
@@ -202,7 +202,7 @@ export default function Home() {
       </div>
 
       {stats && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
           <MetricCard
             title="Всего пользователей"
             value={stats.totalUsers}
@@ -236,8 +236,8 @@ export default function Home() {
 
       {courseStreamStats.length > 0 && (
         <Card>
-          <CardContent className="pt-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <CardContent>
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
               {courseStreamStats.map((stream) => (
                 <Card key={`${stream.courseId}-${stream.courseStream}`} className="bg-muted/50">
                   <CardContent className="flex justify-between items-center p-4">
@@ -263,7 +263,7 @@ export default function Home() {
         <BookingsTable bookings={bookings} />
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid gap-6 lg:grid-cols-2">
           {/* User Growth Chart */}
           {userGrowthData.length > 0 && (
             <UserGrowthChart data={userGrowthData} />

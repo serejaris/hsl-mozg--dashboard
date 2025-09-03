@@ -3,6 +3,7 @@
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
+
 interface DailyStats {
   date: string;
   newUsers: number;
@@ -31,24 +32,26 @@ export default function EventsChart({ dailyData, topEvents }: EventsChartProps) 
   }));
 
   return (
-    <div className="space-y-6">
-      {/* Daily Activity Chart */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Daily Activity (Last 30 Days)</h3>
-        <div className="h-80">
+    <div className="space-y-4">
+      <Card>
+        <CardHeader>
+          <CardTitle>Ежедневная активность (Последние 30 дней)</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="h-80">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={formattedDailyData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+              <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
               <XAxis 
                 dataKey="date" 
-                stroke="#6b7280"
+                className="stroke-muted-foreground"
                 fontSize={12}
               />
-              <YAxis stroke="#6b7280" fontSize={12} />
+              <YAxis className="stroke-muted-foreground" fontSize={12} />
               <Tooltip 
                 contentStyle={{
-                  backgroundColor: 'white',
-                  border: '1px solid #e5e7eb',
+                  backgroundColor: 'hsl(var(--card))',
+                  border: '1px solid hsl(var(--border))',
                   borderRadius: '6px',
                   boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
                 }}
@@ -56,17 +59,17 @@ export default function EventsChart({ dailyData, topEvents }: EventsChartProps) 
               <Line 
                 type="monotone" 
                 dataKey="newUsers" 
-                stroke="#3b82f6" 
+                stroke="hsl(var(--primary))" 
                 strokeWidth={2}
-                name="New Users"
-                dot={{ fill: '#3b82f6', strokeWidth: 2, r: 4 }}
+                name="Новые пользователи"
+                dot={{ fill: 'hsl(var(--primary))', strokeWidth: 2, r: 4 }}
               />
               <Line 
                 type="monotone" 
                 dataKey="bookings" 
                 stroke="#10b981" 
                 strokeWidth={2}
-                name="Bookings"
+                name="Бронирования"
                 dot={{ fill: '#10b981', strokeWidth: 2, r: 4 }}
               />
               <Line 
@@ -74,46 +77,50 @@ export default function EventsChart({ dailyData, topEvents }: EventsChartProps) 
                 dataKey="events" 
                 stroke="#f59e0b" 
                 strokeWidth={2}
-                name="Events"
+                name="События"
                 dot={{ fill: '#f59e0b', strokeWidth: 2, r: 4 }}
               />
             </LineChart>
           </ResponsiveContainer>
-        </div>
-      </div>
+          </div>
+        </CardContent>
+      </Card>
 
-      {/* Top Events Chart */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Most Frequent User Actions</h3>
-        <div className="h-80">
+      <Card>
+        <CardHeader>
+          <CardTitle>Наиболее частые действия пользователей</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="h-80">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={topEvents.slice(0, 8)} layout="horizontal">
-              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-              <XAxis type="number" stroke="#6b7280" fontSize={12} />
+              <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+              <XAxis type="number" className="stroke-muted-foreground" fontSize={12} />
               <YAxis 
                 dataKey="eventType" 
                 type="category" 
-                stroke="#6b7280" 
+                className="stroke-muted-foreground" 
                 fontSize={12}
                 width={100}
               />
               <Tooltip 
                 contentStyle={{
-                  backgroundColor: 'white',
-                  border: '1px solid #e5e7eb',
+                  backgroundColor: 'hsl(var(--card))',
+                  border: '1px solid hsl(var(--border))',
                   borderRadius: '6px',
                   boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)'
                 }}
               />
               <Bar 
                 dataKey="count" 
-                fill="#6366f1"
+                fill="hsl(var(--primary))"
                 radius={[0, 4, 4, 0]}
               />
             </BarChart>
           </ResponsiveContainer>
-        </div>
-      </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

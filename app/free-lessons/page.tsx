@@ -7,6 +7,8 @@ import HotLeads from '@/components/HotLeads';
 import RegistrationTrendChart from '@/components/RegistrationTrendChart';
 import UnifiedLessonBreakdown from '@/components/UnifiedLessonBreakdown';
 import { GraduationCap, Users, RefreshCw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+
 
 interface FreeLessonRegistration {
   id: number;
@@ -50,7 +52,7 @@ export default function FreeLessonsPage() {
   if (loading && registrations.length === 0) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-gray-500">Loading free lessons data...</div>
+        <div className="text-muted-foreground">Загрузка данных бесплатных уроков...</div>
       </div>
     );
   }
@@ -58,7 +60,7 @@ export default function FreeLessonsPage() {
   if (error) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-red-500">Error: {error}</div>
+        <div className="text-destructive">Error: {error}</div>
       </div>
     );
   }
@@ -68,46 +70,42 @@ export default function FreeLessonsPage() {
   const uniqueUsers = new Set(registrations.map(r => r.user_id)).size;
 
   return (
-    <div className="space-y-6">
+    <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-900">Free Lesson Registrations</h1>
+        <h1 className="text-2xl font-bold text-foreground">Регистрации на бесплатные уроки</h1>
         <div className="flex items-center gap-4">
-          <div className="text-sm text-gray-500">
-            Last updated: {new Date().toLocaleTimeString('ru-RU')}
+          <div className="text-sm text-muted-foreground">
+            Обновлено: {new Date().toLocaleTimeString('ru-RU')}
           </div>
-          <button
+          <Button
             onClick={fetchData}
             disabled={loading}
-            className="flex items-center gap-2 px-3 py-1 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            size="sm"
           >
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
-          </button>
+            Обновить
+          </Button>
         </div>
       </div>
 
-      {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         <MetricCard
-          title="Total Registrations"
+          title="Всего регистраций"
           value={totalRegistrations}
           icon={GraduationCap}
         />
         <MetricCard
-          title="Unique Users"
+          title="Уникальные пользователи"
           value={uniqueUsers}
           icon={Users}
         />
         <HotLeads />
       </div>
 
-      {/* Unified Lesson Breakdown */}
       <UnifiedLessonBreakdown registrations={registrations} />
 
-      {/* Registration Trend Chart */}
       <RegistrationTrendChart registrations={registrations} />
 
-      {/* Registrations Table */}
       <FreeLessonsTable registrations={registrations} />
     </div>
   );

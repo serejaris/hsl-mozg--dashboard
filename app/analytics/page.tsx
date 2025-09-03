@@ -3,6 +3,10 @@
 import { useEffect, useState } from 'react';
 import EventsChart from '@/components/EventsChart';
 import { TrendingUp, Users, Activity, RefreshCw } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+
 
 interface DailyStats {
   date: string;
@@ -53,7 +57,7 @@ export default function AnalyticsPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-gray-500">Loading analytics...</div>
+        <div className="text-muted-foreground">Загрузка аналитики...</div>
       </div>
     );
   }
@@ -61,7 +65,7 @@ export default function AnalyticsPage() {
   if (error) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-red-500">Error: {error}</div>
+        <div className="text-destructive">Error: {error}</div>
       </div>
     );
   }
@@ -73,114 +77,105 @@ export default function AnalyticsPage() {
   const avgDailyUsers = totalNewUsers / Math.max(dailyStats.length, 1);
 
   return (
-    <div className="space-y-6">
+    <div className="p-6 space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-900">Analytics</h1>
+        <h1 className="text-2xl font-bold text-foreground">Analytics</h1>
         <div className="flex items-center gap-4">
-          <div className="text-sm text-gray-500">
-            Last updated: {new Date().toLocaleTimeString('ru-RU')}
+          <div className="text-sm text-muted-foreground">
+            Обновлено: {new Date().toLocaleTimeString('ru-RU')}
           </div>
-          <button
+          <Button
             onClick={fetchData}
             disabled={loading}
-            className="flex items-center gap-2 px-3 py-1 text-sm bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            size="sm"
           >
             <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
-          </button>
+            Обновить
+          </Button>
         </div>
       </div>
 
-      {/* Summary Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-          <div className="flex items-center justify-between">
+      <div className="grid gap-6 md:grid-cols-3">
+        <Card>
+          <CardContent className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Total New Users (30 days)</p>
-              <p className="text-2xl font-bold text-gray-900 mt-2">{totalNewUsers}</p>
-              <p className="text-xs text-gray-500 mt-1">
-                Avg: {avgDailyUsers.toFixed(1)} per day
+              <p className="text-sm font-medium text-muted-foreground">Новые пользователи (30 дней)</p>
+              <p className="text-2xl font-bold text-foreground mt-2">{totalNewUsers}</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Ср.: {avgDailyUsers.toFixed(1)} в день
               </p>
             </div>
-            <div className="p-3 bg-blue-50 rounded-lg">
-              <Users className="h-6 w-6 text-blue-600" />
+            <div className="p-3 bg-primary/10 rounded-lg">
+              <Users className="h-6 w-6 text-primary" />
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
 
-        <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-          <div className="flex items-center justify-between">
+        <Card>
+          <CardContent className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Total Bookings (30 days)</p>
-              <p className="text-2xl font-bold text-gray-900 mt-2">{totalBookings}</p>
-              <p className="text-xs text-gray-500 mt-1">
-                Avg: {(totalBookings / Math.max(dailyStats.length, 1)).toFixed(1)} per day
+              <p className="text-sm font-medium text-muted-foreground">Бронирования (30 дней)</p>
+              <p className="text-2xl font-bold text-foreground mt-2">{totalBookings}</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Ср.: {(totalBookings / Math.max(dailyStats.length, 1)).toFixed(1)} в день
               </p>
             </div>
-            <div className="p-3 bg-green-50 rounded-lg">
-              <TrendingUp className="h-6 w-6 text-green-600" />
+            <div className="p-3 bg-primary/10 rounded-lg">
+              <TrendingUp className="h-6 w-6 text-primary" />
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
 
-        <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-          <div className="flex items-center justify-between">
+        <Card>
+          <CardContent className="flex items-center justify-between">
             <div>
-              <p className="text-sm font-medium text-gray-600">Total Events (30 days)</p>
-              <p className="text-2xl font-bold text-gray-900 mt-2">{totalEvents}</p>
-              <p className="text-xs text-gray-500 mt-1">
-                Avg: {(totalEvents / Math.max(dailyStats.length, 1)).toFixed(1)} per day
+              <p className="text-sm font-medium text-muted-foreground">События (30 дней)</p>
+              <p className="text-2xl font-bold text-foreground mt-2">{totalEvents}</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Ср.: {(totalEvents / Math.max(dailyStats.length, 1)).toFixed(1)} в день
               </p>
             </div>
-            <div className="p-3 bg-purple-50 rounded-lg">
-              <Activity className="h-6 w-6 text-purple-600" />
+            <div className="p-3 bg-primary/10 rounded-lg">
+              <Activity className="h-6 w-6 text-primary" />
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Charts */}
       <EventsChart dailyData={dailyStats} topEvents={topEvents} />
 
-      {/* Top Events Table */}
       {topEvents.length > 0 && (
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-          <div className="p-6 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900">Event Details</h2>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Event Type
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Count
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Percentage
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {topEvents.map((event, index) => (
-                  <tr key={event.eventType} className={index % 2 === 0 ? 'bg-white' : 'bg-gray-50'}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+        <Card>
+          <CardHeader>
+            <CardTitle>Детали событий</CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Тип события</TableHead>
+                  <TableHead>Количество</TableHead>
+                  <TableHead>Процент</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {topEvents.map((event) => (
+                  <TableRow key={event.eventType}>
+                    <TableCell className="font-medium">
                       {event.eventType}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    </TableCell>
+                    <TableCell>
                       {event.count}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    </TableCell>
+                    <TableCell>
                       {((event.count / totalEvents) * 100).toFixed(1)}%
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
       )}
     </div>
   );
