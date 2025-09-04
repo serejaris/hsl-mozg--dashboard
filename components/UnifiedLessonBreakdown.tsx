@@ -70,10 +70,10 @@ export default function UnifiedLessonBreakdown({ registrations, conversionData =
 
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-      <div className="p-6 border-b border-gray-200">
+      <div className="p-4 border-b border-gray-200">
         <h2 className="text-lg font-semibold text-gray-900">Статистика по урокам</h2>
       </div>
-      <div className="p-6">
+      <div className="p-4">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {sortedLessonTypes.map(([lessonType, data]) => {
             // Sort dates from newest to oldest, handling 'Дата не указана'

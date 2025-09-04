@@ -103,7 +103,7 @@ export default function FreeLessonsTable({ registrations }: FreeLessonsTableProp
 
   if (registrations.length === 0) {
     return (
-      <Card className="p-8">
+      <Card className="p-4">
         <div className="text-center text-muted-foreground">
           <p className="text-lg">No free lesson registrations found</p>
         </div>
@@ -219,7 +219,7 @@ export default function FreeLessonsTable({ registrations }: FreeLessonsTableProp
         </Table>
 
         {filteredRegistrations.length === 0 && filter && (
-          <div className="p-8 text-center">
+          <div className="p-4 text-center">
             <p className="text-muted-foreground">No registrations match your search criteria.</p>
             <Button
               onClick={() => setFilter('')}

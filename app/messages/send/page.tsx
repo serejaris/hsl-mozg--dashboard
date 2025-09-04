@@ -272,7 +272,7 @@ export default function SendMessagePage() {
                   <label className="block text-sm font-medium text-foreground mb-2">
                     Или выберите целый поток
                   </label>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     {['3rd_stream', '4th_stream', '5th_stream'].map(stream => (
                       <Button
                         key={stream}
