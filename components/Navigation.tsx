@@ -17,6 +17,7 @@ const navigation = [
   { name: 'Funnel', href: '/', icon: LayoutDashboard },
   { name: 'Курсы', href: '/workshops', icon: Calendar },
   { name: 'Messages', href: '/messages/send', icon: MessageSquare },
+  { name: 'Пользователи', href: '/users', icon: Users },
   { name: 'Analytics', href: '/analytics', icon: BarChart3 },
   { name: 'Content', href: '/content', icon: FileText },
 ];
