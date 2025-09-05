@@ -806,3 +806,387 @@ export async function createAuditLogEntry(
     client.release();
   }
 }
+
+// User Management Functions
+
+export interface UserDetailInfo {
+  user_id: number;
+  username: string | null;
+  first_name: string | null;
+  last_activity?: string;
+  total_bookings: number;
+  total_events: number;
+  total_free_lessons: number;
+  latest_stream: string | null;
+  latest_payment_status: number | null;
+}
+
+export interface UserBookingInfo {
+  id: number;
+  user_id: number;
+  course_id: number;
+  course_stream: string | null;
+  confirmed: number;
+  created_at: string;
+  referral_code: string | null;
+  discount_percent: number | null;
+}
+
+export interface UserEventInfo {
+  id: number;
+  event_type: string;
+  created_at: string;
+  details: any;
+}
+
+export interface UserFreeLessonInfo {
+  id: number;
+  user_id: number;
+  email: string | null;
+  registered_at: string;
+  notification_sent: boolean;
+  lesson_type: string | null;
+  lesson_date: string | null;
+}
+
+// Get paginated list of users with basic info
+export async function getUsers(
+  limit: number = 50, 
+  offset: number = 0,
+  searchQuery?: string,
+  streamFilter?: string,
+  statusFilter?: number
+): Promise<{users: UserDetailInfo[], total: number}> {
+  const client = await pool.connect();
+  try {
+    let whereClause = '';
+    const params: any[] = [];
+    let paramIndex = 1;
+
+    // Build WHERE clause
+    const conditions: string[] = [];
+    
+    if (searchQuery) {
+      conditions.push(`(LOWER(u.username) LIKE $${paramIndex} OR LOWER(u.first_name) LIKE $${paramIndex})`);
+      params.push(`%${searchQuery.toLowerCase()}%`);
+      paramIndex++;
+    }
+
+    if (streamFilter) {
+      conditions.push(`u.latest_stream = $${paramIndex}`);
+      params.push(streamFilter);
+      paramIndex++;
+    }
+
+    if (statusFilter !== undefined) {
+      conditions.push(`u.latest_payment_status = $${paramIndex}`);
+      params.push(statusFilter);
+      paramIndex++;
+    }
+
+    if (conditions.length > 0) {
+      whereClause = 'WHERE ' + conditions.join(' AND ');
+    }
+
+    // Get total count
+    const countQuery = `
+      WITH all_users AS (
+        SELECT DISTINCT ON (user_id) 
+          user_id, 
+          username, 
+          first_name,
+          (SELECT course_stream FROM bookings b2 WHERE b2.user_id = b.user_id ORDER BY created_at DESC LIMIT 1) as latest_stream,
+          (SELECT confirmed FROM bookings b3 WHERE b3.user_id = b.user_id ORDER BY created_at DESC LIMIT 1) as latest_payment_status
+        FROM (
+          SELECT user_id, username, first_name FROM bookings
+          UNION
+          SELECT user_id, username, first_name FROM free_lesson_registrations
+        ) AS b
+        ORDER BY user_id
+      )
+      SELECT COUNT(*) as count FROM all_users u ${whereClause}
+    `;
+
+    const countResult = await client.query(countQuery, params);
+    const total = parseInt(countResult.rows[0].count);
+
+    // Get users with detailed info
+    params.push(limit, offset);
+    const usersQuery = `
+      WITH all_users AS (
+        SELECT DISTINCT ON (user_id) 
+          user_id, 
+          username, 
+          first_name,
+          (SELECT course_stream FROM bookings b2 WHERE b2.user_id = b.user_id ORDER BY created_at DESC LIMIT 1) as latest_stream,
+          (SELECT confirmed FROM bookings b3 WHERE b3.user_id = b.user_id ORDER BY created_at DESC LIMIT 1) as latest_payment_status
+        FROM (
+          SELECT user_id, username, first_name FROM bookings
+          UNION
+          SELECT user_id, username, first_name FROM free_lesson_registrations
+        ) AS b
+        ORDER BY user_id
+      ),
+      user_stats AS (
+        SELECT 
+          u.user_id,
+          u.username,
+          u.first_name,
+          u.latest_stream,
+          u.latest_payment_status,
+          COALESCE(b_count.booking_count, 0) as total_bookings,
+          COALESCE(e_count.event_count, 0) as total_events,
+          COALESCE(fl_count.free_lesson_count, 0) as total_free_lessons,
+          GREATEST(
+            COALESCE(b_last.last_booking, '1970-01-01'::timestamp),
+            COALESCE(e_last.last_event, '1970-01-01'::timestamp),
+            COALESCE(fl_last.last_free_lesson, '1970-01-01'::timestamp)
+          ) as last_activity
+        FROM all_users u
+        LEFT JOIN (
+          SELECT user_id, COUNT(*) as booking_count, MAX(created_at) as last_booking
+          FROM bookings
+          GROUP BY user_id
+        ) b_count ON u.user_id = b_count.user_id
+        LEFT JOIN (
+          SELECT user_id, COUNT(*) as event_count, MAX(created_at) as last_event
+          FROM events
+          GROUP BY user_id
+        ) e_count ON u.user_id = e_count.user_id
+        LEFT JOIN (
+          SELECT user_id, COUNT(*) as free_lesson_count, MAX(registered_at) as last_free_lesson
+          FROM free_lesson_registrations
+          GROUP BY user_id
+        ) fl_count ON u.user_id = fl_count.user_id
+        LEFT JOIN (
+          SELECT user_id, MAX(created_at) as last_booking
+          FROM bookings
+          GROUP BY user_id
+        ) b_last ON u.user_id = b_last.user_id
+        LEFT JOIN (
+          SELECT user_id, MAX(created_at) as last_event
+          FROM events
+          GROUP BY user_id
+        ) e_last ON u.user_id = e_last.user_id
+        LEFT JOIN (
+          SELECT user_id, MAX(registered_at) as last_free_lesson
+          FROM free_lesson_registrations
+          GROUP BY user_id
+        ) fl_last ON u.user_id = fl_last.user_id
+      )
+      SELECT * FROM user_stats u 
+      ${whereClause}
+      ORDER BY last_activity DESC, user_id
+      LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
+    `;
+
+    const usersResult = await client.query(usersQuery, params);
+    
+    const users: UserDetailInfo[] = usersResult.rows.map(row => ({
+      user_id: row.user_id,
+      username: row.username,
+      first_name: row.first_name,
+      last_activity: row.last_activity ? row.last_activity.toISOString() : undefined,
+      total_bookings: parseInt(row.total_bookings),
+      total_events: parseInt(row.total_events),
+      total_free_lessons: parseInt(row.total_free_lessons),
+      latest_stream: row.latest_stream,
+      latest_payment_status: row.latest_payment_status
+    }));
+
+    return { users, total };
+  } finally {
+    client.release();
+  }
+}
+
+// Get detailed user information by ID
+export async function getUserById(userId: number): Promise<UserDetailInfo | null> {
+  const client = await pool.connect();
+  try {
+    const result = await client.query(`
+      WITH user_info AS (
+        SELECT DISTINCT ON (user_id) user_id, username, first_name
+        FROM (
+          SELECT user_id, username, first_name FROM bookings WHERE user_id = $1
+          UNION
+          SELECT user_id, username, first_name FROM free_lesson_registrations WHERE user_id = $1
+        ) AS u
+        ORDER BY user_id
+      )
+      SELECT 
+        ui.user_id,
+        ui.username,
+        ui.first_name,
+        COALESCE(b_count.booking_count, 0) as total_bookings,
+        COALESCE(e_count.event_count, 0) as total_events,
+        COALESCE(fl_count.free_lesson_count, 0) as total_free_lessons,
+        (SELECT course_stream FROM bookings WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1) as latest_stream,
+        (SELECT confirmed FROM bookings WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1) as latest_payment_status,
+        GREATEST(
+          COALESCE(b_count.last_booking, '1970-01-01'::timestamp),
+          COALESCE(e_count.last_event, '1970-01-01'::timestamp),
+          COALESCE(fl_count.last_free_lesson, '1970-01-01'::timestamp)
+        ) as last_activity
+      FROM user_info ui
+      LEFT JOIN (
+        SELECT user_id, COUNT(*) as booking_count, MAX(created_at) as last_booking
+        FROM bookings WHERE user_id = $1
+        GROUP BY user_id
+      ) b_count ON ui.user_id = b_count.user_id
+      LEFT JOIN (
+        SELECT user_id, COUNT(*) as event_count, MAX(created_at) as last_event
+        FROM events WHERE user_id = $1
+        GROUP BY user_id
+      ) e_count ON ui.user_id = e_count.user_id
+      LEFT JOIN (
+        SELECT user_id, COUNT(*) as free_lesson_count, MAX(registered_at) as last_free_lesson
+        FROM free_lesson_registrations WHERE user_id = $1
+        GROUP BY user_id
+      ) fl_count ON ui.user_id = fl_count.user_id
+    `, [userId]);
+
+    if (result.rows.length === 0) return null;
+
+    const row = result.rows[0];
+    return {
+      user_id: row.user_id,
+      username: row.username,
+      first_name: row.first_name,
+      last_activity: row.last_activity ? row.last_activity.toISOString() : undefined,
+      total_bookings: parseInt(row.total_bookings),
+      total_events: parseInt(row.total_events),
+      total_free_lessons: parseInt(row.total_free_lessons),
+      latest_stream: row.latest_stream,
+      latest_payment_status: row.latest_payment_status
+    };
+  } finally {
+    client.release();
+  }
+}
+
+// Get user's bookings
+export async function getUserBookings(userId: number): Promise<UserBookingInfo[]> {
+  const client = await pool.connect();
+  try {
+    const result = await client.query(`
+      SELECT id, user_id, course_id, course_stream, confirmed, created_at, referral_code, discount_percent
+      FROM bookings
+      WHERE user_id = $1
+      ORDER BY created_at DESC
+    `, [userId]);
+
+    return result.rows.map(row => ({
+      id: row.id,
+      user_id: row.user_id,
+      course_id: row.course_id,
+      course_stream: row.course_stream,
+      confirmed: row.confirmed,
+      created_at: row.created_at.toISOString(),
+      referral_code: row.referral_code,
+      discount_percent: row.discount_percent
+    }));
+  } finally {
+    client.release();
+  }
+}
+
+// Get user's events
+export async function getUserEvents(userId: number, limit: number = 50): Promise<UserEventInfo[]> {
+  const client = await pool.connect();
+  try {
+    const result = await client.query(`
+      SELECT id, event_type, created_at, details
+      FROM events
+      WHERE user_id = $1
+      ORDER BY created_at DESC
+      LIMIT $2
+    `, [userId, limit]);
+
+    return result.rows.map(row => ({
+      id: row.id,
+      event_type: row.event_type,
+      created_at: row.created_at.toISOString(),
+      details: row.details
+    }));
+  } finally {
+    client.release();
+  }
+}
+
+// Get user's free lesson registrations
+export async function getUserFreeLessons(userId: number): Promise<UserFreeLessonInfo[]> {
+  const client = await pool.connect();
+  try {
+    const result = await client.query(`
+      SELECT id, user_id, email, registered_at, notification_sent, lesson_type, lesson_date
+      FROM free_lesson_registrations
+      WHERE user_id = $1
+      ORDER BY registered_at DESC
+    `, [userId]);
+
+    return result.rows.map(row => ({
+      id: row.id,
+      user_id: row.user_id,
+      email: row.email,
+      registered_at: row.registered_at.toISOString(),
+      notification_sent: row.notification_sent || false,
+      lesson_type: row.lesson_type,
+      lesson_date: row.lesson_date ? row.lesson_date.toISOString().split('T')[0] : null
+    }));
+  } finally {
+    client.release();
+  }
+}
+
+// Update user booking
+export async function updateUserBooking(
+  bookingId: number, 
+  updates: {
+    course_stream?: string;
+    confirmed?: number;
+    referral_code?: string;
+    discount_percent?: number;
+  }
+): Promise<boolean> {
+  const client = await pool.connect();
+  try {
+    const fields = [];
+    const values = [];
+    let paramIndex = 1;
+
+    if (updates.course_stream !== undefined) {
+      fields.push(`course_stream = $${paramIndex++}`);
+      values.push(updates.course_stream);
+    }
+
+    if (updates.confirmed !== undefined) {
+      fields.push(`confirmed = $${paramIndex++}`);
+      values.push(updates.confirmed);
+    }
+
+    if (updates.referral_code !== undefined) {
+      fields.push(`referral_code = $${paramIndex++}`);
+      values.push(updates.referral_code);
+    }
+
+    if (updates.discount_percent !== undefined) {
+      fields.push(`discount_percent = $${paramIndex++}`);
+      values.push(updates.discount_percent);
+    }
+
+    if (fields.length === 0) return false;
+
+    values.push(bookingId);
+    const query = `
+      UPDATE bookings 
+      SET ${fields.join(', ')}
+      WHERE id = $${paramIndex}
+    `;
+
+    const result = await client.query(query, values);
+    return (result.rowCount ?? 0) > 0;
+  } finally {
+    client.release();
+  }
+}
