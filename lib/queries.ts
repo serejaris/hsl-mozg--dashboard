@@ -63,6 +63,16 @@ export interface LessonConversionStats {
   conversion_rate: number;
 }
 
+export interface RecentEvent {
+  id: number;
+  user_id: number;
+  username: string | null;
+  first_name: string | null;
+  event_type: string;
+  created_at: string;
+  details: any;
+}
+
 // Message-related interfaces
 export interface TelegramUser {
   user_id: number;
@@ -304,6 +314,54 @@ export async function getRecentBookings(limit: number = 20) {
     `, [limit]);
 
     return result.rows;
+  } finally {
+    client.release();
+  }
+}
+
+// Get recent events with user details
+export async function getRecentEvents(limit: number = 30): Promise<RecentEvent[]> {
+  const client = await pool.connect();
+  try {
+    const result = await client.query(`
+      WITH ranked_events AS (
+        SELECT 
+          e.id,
+          e.user_id,
+          e.event_type,
+          e.created_at,
+          e.details,
+          COALESCE(b.username, f.username) as username,
+          COALESCE(b.first_name, f.first_name) as first_name,
+          ROW_NUMBER() OVER (PARTITION BY e.user_id ORDER BY e.created_at DESC) as rn
+        FROM events e
+        LEFT JOIN (
+          SELECT DISTINCT ON (user_id) user_id, username, first_name 
+          FROM bookings 
+          WHERE username IS NOT NULL OR first_name IS NOT NULL
+        ) b ON e.user_id = b.user_id
+        LEFT JOIN (
+          SELECT DISTINCT ON (user_id) user_id, username, first_name 
+          FROM free_lesson_registrations 
+          WHERE username IS NOT NULL OR first_name IS NOT NULL
+        ) f ON e.user_id = f.user_id
+      )
+      SELECT id, user_id, event_type, created_at, details, username, first_name
+      FROM ranked_events
+      WHERE rn <= 2
+      ORDER BY created_at DESC
+      LIMIT $1
+    `, [limit]);
+
+    return result.rows.map(row => ({
+      id: row.id,
+      user_id: row.user_id,
+      username: row.username,
+      first_name: row.first_name,
+      event_type: row.event_type,
+      created_at: row.created_at,
+      details: row.details
+    }));
   } finally {
     client.release();
   }

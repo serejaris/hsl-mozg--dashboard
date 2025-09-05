@@ -6,10 +6,11 @@ import UserGrowthChart from '@/components/UserGrowthChart';
 import HotLeads from '@/components/HotLeads';
 import UnifiedLessonBreakdown from '@/components/UnifiedLessonBreakdown';
 import RegistrationTrendChart from '@/components/RegistrationTrendChart';
-import BookingsTable from '@/components/BookingsTable';
+import RecentEventsTable from '@/components/RecentEventsTable';
 import { Users, GraduationCap, RefreshCw, Calendar, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { RecentEvent } from '@/lib/queries';
 
 interface DashboardStats {
   totalUsers: number;
@@ -34,19 +35,6 @@ interface CourseStreamStats {
   cancelled: number;
 }
 
-interface Booking {
-  id: number;
-  user_id: number;
-  username: string;
-  first_name: string;
-  course_id: number;
-  course_stream: string;
-  confirmed: number;
-  created_at: string;
-  referral_code: string;
-  discount_percent: number;
-}
-
 interface FreeLessonRegistration {
   id: number;
   user_id: number;
@@ -66,7 +54,7 @@ export default function Home() {
   
   // Tier 2 - Current state data
   const [courseStreamStats, setCourseStreamStats] = useState<CourseStreamStats[]>([]);
-  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [recentEvents, setRecentEvents] = useState<RecentEvent[]>([]);
   const [tier2Loading, setTier2Loading] = useState(true);
   
   // Tier 3 - Analytics data
@@ -100,9 +88,9 @@ export default function Home() {
   const fetchTier2Data = async () => {
     try {
       setTier2Loading(true);
-      const [courseStreamResponse, bookingsResponse] = await Promise.all([
+      const [courseStreamResponse, eventsResponse] = await Promise.all([
         fetch('/api/course-streams'),
-        fetch('/api/bookings?limit=20')
+        fetch('/api/events?type=recent&limit=30')
       ]);
       
       if (courseStreamResponse.ok) {
@@ -110,9 +98,9 @@ export default function Home() {
         setCourseStreamStats(courseStreamData);
       }
       
-      if (bookingsResponse.ok) {
-        const bookingsData = await bookingsResponse.json();
-        setBookings(bookingsData);
+      if (eventsResponse.ok) {
+        const eventsData = await eventsResponse.json();
+        setRecentEvents(eventsData);
       }
     } catch (err) {
       console.error('Tier 2 error:', err);
@@ -259,8 +247,8 @@ export default function Home() {
       )}
 
       {/* Recent Activity */}
-      {bookings.length > 0 && (
-        <BookingsTable bookings={bookings} />
+      {recentEvents.length > 0 && (
+        <RecentEventsTable events={recentEvents} />
       )}
 
       <div className="grid gap-6 lg:grid-cols-2">
