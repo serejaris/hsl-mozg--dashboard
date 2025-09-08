@@ -34,16 +34,39 @@ export async function GET(
   }
 }
 
-export async function PATCH(request: Request) {
+export async function PATCH(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
+    const { id } = await params;
+    const userId = parseInt(id);
+    
+    if (isNaN(userId)) {
+      return NextResponse.json(
+        { success: false, error: 'Invalid user ID' },
+        { status: 400 }
+      );
+    }
+
     const body = await request.json();
     const { bookingId, updates } = body;
 
-    if (!bookingId || typeof bookingId !== 'number') {
-      return NextResponse.json(
-        { success: false, error: 'Valid booking ID is required' },
-        { status: 400 }
-      );
+    // If bookingId is null, find the most recent active booking
+    let targetBookingId = bookingId;
+    
+    if (!bookingId) {
+      const userBookings = await getUserBookings(userId);
+      const activeBooking = userBookings.find(booking => booking.confirmed !== -1);
+      
+      if (!activeBooking) {
+        return NextResponse.json(
+          { success: false, error: 'У пользователя нет активных бронирований' },
+          { status: 400 }
+        );
+      }
+      
+      targetBookingId = activeBooking.id;
     }
 
     if (!updates || typeof updates !== 'object') {
@@ -93,7 +116,7 @@ export async function PATCH(request: Request) {
       validUpdates.discount_percent = discount;
     }
 
-    const success = await updateUserBooking(bookingId, validUpdates);
+    const success = await updateUserBooking(targetBookingId, validUpdates);
 
     if (!success) {
       return NextResponse.json(

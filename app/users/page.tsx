@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Search, RefreshCw, Users as UsersIcon, Filter, Eye } from 'lucide-react';
+import { Search, RefreshCw, Users as UsersIcon, Filter, Eye, Edit } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import UserDetailsDialog from '@/components/UserDetailsDialog';
+import StreamChangeDialog from '@/components/StreamChangeDialog';
 
 interface UserDetailInfo {
   user_id: number;
@@ -44,6 +45,9 @@ export default function UsersPage() {
   const [total, setTotal] = useState(0);
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [showUserDialog, setShowUserDialog] = useState(false);
+  const [streamChangeUserId, setStreamChangeUserId] = useState<number | null>(null);
+  const [showStreamChangeDialog, setShowStreamChangeDialog] = useState(false);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   const fetchUsers = async (page: number = 1, resetData: boolean = false) => {
     try {
@@ -112,6 +116,25 @@ export default function UsersPage() {
     setShowUserDialog(false);
     setSelectedUserId(null);
     // Refresh the current page to show any updates
+    fetchUsers(currentPage);
+  };
+
+  const handleStreamChangeClick = (userId: number) => {
+    setStreamChangeUserId(userId);
+    setShowStreamChangeDialog(true);
+  };
+
+  const handleStreamChangeClose = () => {
+    setShowStreamChangeDialog(false);
+    setStreamChangeUserId(null);
+  };
+
+  const handleStreamChangeSuccess = () => {
+    // Show success message
+    setSuccessMessage('Поток пользователя успешно изменен');
+    // Clear success message after 3 seconds
+    setTimeout(() => setSuccessMessage(null), 3000);
+    // Refresh the current page to show the updated stream
     fetchUsers(currentPage);
   };
 
@@ -278,6 +301,12 @@ export default function UsersPage() {
               </div>
             )}
 
+            {successMessage && (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-4">
+                <p className="text-green-800">{successMessage}</p>
+              </div>
+            )}
+
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
@@ -308,7 +337,17 @@ export default function UsersPage() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          {getStreamBadge(user.latest_stream)}
+                          <div className="flex items-center gap-2">
+                            {getStreamBadge(user.latest_stream)}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleStreamChangeClick(user.user_id)}
+                              className="h-6 w-6 p-0"
+                            >
+                              <Edit className="h-3 w-3" />
+                            </Button>
+                          </div>
                         </TableCell>
                         <TableCell>
                           {getStatusBadge(user.latest_payment_status)}
@@ -398,6 +437,21 @@ export default function UsersPage() {
             userId={selectedUserId}
             open={showUserDialog}
             onClose={handleUserDialogClose}
+          />
+        )}
+
+        {/* Stream Change Dialog */}
+        {streamChangeUserId && (
+          <StreamChangeDialog
+            userId={streamChangeUserId}
+            currentStream={users.find(u => u.user_id === streamChangeUserId)?.latest_stream || null}
+            userName={(() => {
+              const user = users.find(u => u.user_id === streamChangeUserId);
+              return user ? (user.first_name || user.username || 'Безымянный') : 'Пользователь';
+            })()}
+            open={showStreamChangeDialog}
+            onClose={handleStreamChangeClose}
+            onSuccess={handleStreamChangeSuccess}
           />
         )}
       </div>

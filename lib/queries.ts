@@ -1248,3 +1248,46 @@ export async function updateUserBooking(
     client.release();
   }
 }
+
+// Update user's most recent active booking stream
+export async function updateUserStream(
+  userId: number, 
+  newStream: string
+): Promise<{ success: boolean; bookingId?: number; error?: string }> {
+  const client = await pool.connect();
+  try {
+    // Find the most recent active booking
+    const bookingsResult = await client.query(`
+      SELECT id, course_stream
+      FROM bookings
+      WHERE user_id = $1 AND confirmed != -1
+      ORDER BY created_at DESC
+      LIMIT 1
+    `, [userId]);
+
+    if (bookingsResult.rows.length === 0) {
+      return { success: false, error: 'У пользователя нет активных бронирований' };
+    }
+
+    const booking = bookingsResult.rows[0];
+    
+    if (booking.course_stream === newStream) {
+      return { success: false, error: 'Пользователь уже находится в этом потоке' };
+    }
+
+    // Update the booking's stream
+    const updateResult = await client.query(`
+      UPDATE bookings 
+      SET course_stream = $1
+      WHERE id = $2
+    `, [newStream, booking.id]);
+
+    if ((updateResult.rowCount ?? 0) === 0) {
+      return { success: false, error: 'Не удалось обновить поток' };
+    }
+
+    return { success: true, bookingId: booking.id };
+  } finally {
+    client.release();
+  }
+}
