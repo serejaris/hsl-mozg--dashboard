@@ -583,9 +583,7 @@ export async function getUsersByStream(courseStream: string): Promise<TelegramUs
       WHERE b.course_stream = $1 
         AND b.user_id IS NOT NULL
         AND b.confirmed != -1
-      ORDER BY b.user_id,
-               CASE WHEN b.username IS NOT NULL AND b.username != '' THEN 1 ELSE 2 END,
-               CASE WHEN b.first_name IS NOT NULL AND b.first_name != '' THEN 1 ELSE 2 END
+      ORDER BY b.user_id, b.username, b.first_name
     `, [courseStream]);
 
     console.log(`📊 getUsersByStream: Found ${result.rows.length} users for stream ${courseStream}`);
@@ -637,15 +635,16 @@ export async function createMessageHistory(
   messageText: string, 
   totalRecipients: number,
   recipientType: 'individual' | 'group' = 'individual',
-  recipientGroup: string | null = null
+  recipientGroup: string | null = null,
+  scheduledAt: string | null = null
 ): Promise<number> {
   const client = await pool.connect();
   try {
     const result = await client.query(`
-      INSERT INTO message_history (message_text, total_recipients, recipient_type, recipient_group)
-      VALUES ($1, $2, $3, $4)
+      INSERT INTO message_history (message_text, total_recipients, recipient_type, recipient_group, scheduled_at)
+      VALUES ($1, $2, $3, $4, $5)
       RETURNING id
-    `, [messageText, totalRecipients, recipientType, recipientGroup]);
+    `, [messageText, totalRecipients, recipientType, recipientGroup, scheduledAt]);
 
     return result.rows[0].id;
   } finally {
@@ -668,14 +667,22 @@ export async function addMessageRecipients(messageId: number, recipients: Telegr
 }
 
 // Update recipient delivery status
-export async function updateRecipientStatus(messageId: number, userId: number, status: string): Promise<void> {
+export async function updateRecipientStatus(messageId: number, userId: number, status: string, telegramMessageId?: number): Promise<void> {
   const client = await pool.connect();
   try {
-    await client.query(`
-      UPDATE message_recipients 
-      SET delivery_status = $1 
-      WHERE message_id = $2 AND user_id = $3
-    `, [status, messageId, userId]);
+    if (telegramMessageId !== undefined) {
+      await client.query(`
+        UPDATE message_recipients 
+        SET delivery_status = $1, telegram_message_id = $2
+        WHERE message_id = $3 AND user_id = $4
+      `, [status, telegramMessageId, messageId, userId]);
+    } else {
+      await client.query(`
+        UPDATE message_recipients 
+        SET delivery_status = $1 
+        WHERE message_id = $2 AND user_id = $3
+      `, [status, messageId, userId]);
+    }
   } finally {
     client.release();
   }
@@ -770,12 +777,15 @@ export async function getMessageRecipients(messageId: number): Promise<MessageRe
 }
 
 // Validate user IDs exist in database
-export async function validateUserIds(userIds: number[]): Promise<{
+export async function validateUserIds(userIds: (number | string)[]): Promise<{
   valid: TelegramUser[];
   invalid: number[];
 }> {
   const client = await pool.connect();
   try {
+    // Convert all userIds to numbers to ensure consistent typing
+    const normalizedUserIds: number[] = userIds.map(id => typeof id === 'string' ? parseInt(id) : id);
+    
     const result = await client.query(`
       SELECT DISTINCT ON (user_id) user_id, username, first_name
       FROM (
@@ -790,18 +800,50 @@ export async function validateUserIds(userIds: number[]): Promise<{
       ORDER BY user_id, 
                CASE WHEN username IS NOT NULL AND username != '' THEN 1 ELSE 2 END,
                CASE WHEN first_name IS NOT NULL AND first_name != '' THEN 1 ELSE 2 END
-    `, [userIds]);
+    `, [normalizedUserIds]);
+
+    console.log('🐛 DEBUG: Raw database results:', result.rows.map(row => ({
+      user_id_string: row.user_id,
+      user_id_type: typeof row.user_id,
+      username: row.username,
+      first_name: row.first_name
+    })));
 
     const validUsers: TelegramUser[] = result.rows.map(row => ({
-      user_id: row.user_id,
+      user_id: parseInt(row.user_id),
       username: row.username,
       first_name: row.first_name
     }));
 
-    const validIds = new Set(validUsers.map(u => u.user_id));
-    const invalidIds = userIds.filter(id => !validIds.has(id));
+    console.log('🐛 DEBUG: Original userIds:', userIds.map(id => ({ 
+      id, 
+      type: typeof id,
+      string: String(id)
+    })));
+    
+    console.log('🐛 DEBUG: Normalized userIds:', normalizedUserIds.map(id => ({ 
+      id, 
+      type: typeof id,
+      string: String(id)
+    })));
+    
+    console.log('🐛 DEBUG: Converted validUsers:', validUsers.map(u => ({
+      user_id: u.user_id,
+      type: typeof u.user_id,
+      string: String(u.user_id)
+    })));
 
-    console.log(`🔍 validateUserIds: Requested ${userIds.length} user(s), found ${validUsers.length} unique valid user(s), ${invalidIds.length} invalid`);
+    const validIds = new Set(validUsers.map(u => u.user_id));
+    console.log('🐛 DEBUG: ValidIds Set:', Array.from(validIds));
+    
+    // Debug the filter logic step by step - using normalized IDs
+    const invalidIds = normalizedUserIds.filter(id => {
+      const hasId = validIds.has(id);
+      console.log(`🐛 DEBUG: Checking ${id} (${typeof id}): Set.has() = ${hasId}`);
+      return !hasId;
+    });
+
+    console.log(`🔍 validateUserIds: Requested ${normalizedUserIds.length} user(s), found ${validUsers.length} unique valid user(s), ${invalidIds.length} invalid`);
 
     return {
       valid: validUsers,
@@ -824,12 +866,64 @@ export interface AuditLogEntry {
   details: string;
 }
 
+// Delete a Telegram message for a specific recipient
+export async function deleteTelegramMessage(messageId: number, userId: number): Promise<{success: boolean, error?: string}> {
+  const client = await pool.connect();
+  try {
+    // Get the telegram_message_id for this recipient
+    const result = await client.query(`
+      SELECT telegram_message_id 
+      FROM message_recipients 
+      WHERE message_id = $1 AND user_id = $2 AND delivery_status = 'sent'
+    `, [messageId, userId]);
+
+    if (result.rows.length === 0 || !result.rows[0].telegram_message_id) {
+      return { success: false, error: 'Message not found or no Telegram message ID available' };
+    }
+
+    const telegramMessageId = result.rows[0].telegram_message_id;
+    
+    // Delete the message using Telegram Bot API
+    // Note: We need to import and use the bot instance here
+    try {
+      const TelegramBot = require('node-telegram-bot-api');
+      const bot = new TelegramBot(process.env.BOT_TOKEN || '', { polling: false });
+      
+      await bot.deleteMessage(userId, telegramMessageId);
+      
+      // Update delivery status to 'deleted'
+      await client.query(`
+        UPDATE message_recipients 
+        SET delivery_status = 'deleted'
+        WHERE message_id = $1 AND user_id = $2
+      `, [messageId, userId]);
+      
+      console.log(`✅ Deleted message ${telegramMessageId} for user ${userId}`);
+      return { success: true };
+      
+    } catch (telegramError: any) {
+      console.error(`❌ Failed to delete Telegram message:`, telegramError);
+      let errorMessage = 'Unknown Telegram error';
+      
+      if (telegramError.code === 400) {
+        errorMessage = 'Message too old to delete or message not found';
+      } else if (telegramError.response?.body?.description) {
+        errorMessage = telegramError.response.body.description;
+      }
+      
+      return { success: false, error: errorMessage };
+    }
+    
+  } finally {
+    client.release();
+  }
+}
+
 // Create audit log entry for message sending operations
 export async function createAuditLogEntry(
   actionType: string,
   userCount: number,
   messagePreview: string,
-  testMode: boolean,
   success: boolean,
   details: object
 ): Promise<number> {
@@ -839,7 +933,6 @@ export async function createAuditLogEntry(
       actionType,
       userCount,
       messagePreview: messagePreview.slice(0, 50) + (messagePreview.length > 50 ? '...' : ''),
-      testMode,
       success,
       timestamp: new Date().toISOString()
     });
@@ -850,7 +943,6 @@ export async function createAuditLogEntry(
       action_type: actionType,
       user_count: userCount,
       message_preview: messagePreview.slice(0, 100),
-      test_mode: testMode,
       success: success,
       created_at: new Date().toISOString(),
       details: JSON.stringify(details)

@@ -9,6 +9,7 @@ import {
   createAuditLogEntry,
   TelegramUser 
 } from '@/lib/queries';
+import '@/lib/init'; // Initialize application on first API call
 
 // Initialize bot (no polling for API routes)
 const bot = new TelegramBot(process.env.BOT_TOKEN || '', { polling: false });
@@ -25,15 +26,13 @@ interface SendMessageRequest {
       row?: number;
     }>;
   };
+  scheduled_at?: string; // ISO timestamp for scheduled sending
 }
 
 export async function POST(request: NextRequest) {
   try {
-    // Check if we're in test mode
-    const isTestMode = process.env.TEST_MODE === 'true';
-    
-    // Validate BOT_TOKEN (not required in test mode)
-    if (!isTestMode && !process.env.BOT_TOKEN) {
+    // Validate BOT_TOKEN
+    if (!process.env.BOT_TOKEN) {
       return NextResponse.json(
         { error: 'Bot token not configured' },
         { status: 500 }
@@ -88,6 +87,28 @@ export async function POST(request: NextRequest) {
     // Use validated users for sending
     const validatedRecipients = validUsers;
 
+    // Check if this is a scheduled message
+    const isScheduled = data.scheduled_at && data.scheduled_at.trim().length > 0;
+    const scheduledAt = isScheduled ? data.scheduled_at : null;
+
+    // Validate scheduled_at if provided
+    if (isScheduled) {
+      const scheduledTime = new Date(scheduledAt!);
+      const now = new Date();
+      
+      if (isNaN(scheduledTime.getTime())) {
+        return NextResponse.json({
+          error: 'Invalid scheduled_at format. Use ISO timestamp.'
+        }, { status: 400 });
+      }
+      
+      if (scheduledTime <= now) {
+        return NextResponse.json({
+          error: 'scheduled_at must be in the future'
+        }, { status: 400 });
+      }
+    }
+
     // Determine if this is a group message
     const uniqueStreams = [...new Set(validatedRecipients.map(user => user.course_stream).filter(Boolean))];
     const isGroupMessage = uniqueStreams.length === 1 && validatedRecipients.length > 1;
@@ -100,6 +121,8 @@ export async function POST(request: NextRequest) {
       isGroupMessage,
       recipientType,
       recipientGroup,
+      isScheduled,
+      scheduledAt,
       timestamp: new Date().toISOString()
     });
 
@@ -108,11 +131,39 @@ export async function POST(request: NextRequest) {
       data.message.text,
       validatedRecipients.length,
       recipientType,
-      recipientGroup
+      recipientGroup,
+      scheduledAt
     );
 
     // Add recipients to database
     await addMessageRecipients(messageId, validatedRecipients);
+
+    // If this is a scheduled message, save and return early
+    if (isScheduled) {
+      console.log(`⏰ Message ${messageId} scheduled for ${scheduledAt}`);
+      
+      // Create audit log for scheduled message
+      await createAuditLogEntry(
+        'message_scheduled',
+        validatedRecipients.length,
+        data.message.text,
+        true,
+        {
+          messageId,
+          scheduledAt,
+          recipients: validatedRecipients.map(r => ({ userId: r.user_id, username: r.username || 'no_username' }))
+        }
+      );
+
+      return NextResponse.json({
+        success: true,
+        scheduled: true,
+        message_id: messageId,
+        scheduled_at: scheduledAt,
+        recipient_count: validatedRecipients.length,
+        message: `Message scheduled for ${new Date(scheduledAt!).toLocaleString()}`
+      });
+    }
 
     // Prepare Telegram message options
     const messageOptions: any = {
@@ -155,43 +206,6 @@ export async function POST(request: NextRequest) {
       };
     }
 
-    // TEST MODE: Log everything but don't actually send
-    if (isTestMode) {
-      console.log('\n🧪 [TEST MODE] Message sending simulation:');
-      console.log('📨 Message text:', data.message.text);
-      console.log('👥 Validated Recipients:', validatedRecipients.map(r => `${r.username || 'no_username'} (${r.first_name || 'No name'}) - ID: ${r.user_id}`));
-      console.log('⚙️ Message options:', JSON.stringify(messageOptions, null, 2));
-      console.log('🚨 NO REAL MESSAGES WILL BE SENT IN TEST MODE\n');
-      
-      // Create audit log entry for test mode
-      await createAuditLogEntry(
-        'message_send_test',
-        validatedRecipients.length,
-        data.message.text,
-        true,
-        true,
-        {
-          recipients: validatedRecipients.map(r => ({ userId: r.user_id, username: r.username || 'no_username' })),
-          messageOptions: messageOptions
-        }
-      );
-      
-      // Simulate successful delivery for all recipients in test mode
-      for (const recipient of validatedRecipients) {
-        await updateRecipientStatus(messageId, recipient.user_id, 'sent');
-      }
-      
-      await updateMessageDeliveryStats(messageId);
-      
-      return NextResponse.json({
-        success: true,
-        test_mode: true,
-        message_id: messageId,
-        sent_count: validatedRecipients.length,
-        failed_count: 0,
-        message: 'TEST MODE: Messages simulated but not actually sent'
-      });
-    }
 
     // Send messages with error handling
     let sentCount = 0;
@@ -205,13 +219,13 @@ export async function POST(request: NextRequest) {
       
       for (const recipient of batch) {
         try {
-          await bot.sendMessage(
+          const telegramMessage = await bot.sendMessage(
             recipient.user_id,
             data.message.text,
             messageOptions
           );
           
-          await updateRecipientStatus(messageId, recipient.user_id, 'sent');
+          await updateRecipientStatus(messageId, recipient.user_id, 'sent', telegramMessage.message_id);
           sentCount++;
         } catch (error: any) {
           console.error(`Failed to send message to user ${recipient.user_id}:`, error);
@@ -243,12 +257,11 @@ export async function POST(request: NextRequest) {
     // Update message history with delivery stats
     await updateMessageDeliveryStats(messageId);
 
-    // Create audit log entry for production message sending
+    // Create audit log entry for message sending
     await createAuditLogEntry(
       'message_send_production',
       validatedRecipients.length,
       data.message.text,
-      false,
       sentCount > 0,
       {
         sentCount,

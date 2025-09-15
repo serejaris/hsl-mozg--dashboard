@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getDashboardStats } from '@/lib/queries';
+import '@/lib/init'; // Initialize application services
 
 export async function GET() {
   try {

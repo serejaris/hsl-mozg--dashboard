@@ -24,6 +24,10 @@ interface SendMessageResponse {
   sent_count: number;
   failed_count: number;
   errors?: Array<{ user_id: number; error: string }>;
+  scheduled?: boolean;
+  scheduled_at?: string;
+  recipient_count?: number;
+  message?: string;
 }
 
 export default function SendMessagePage() {
@@ -38,6 +42,8 @@ export default function SendMessagePage() {
   const [error, setError] = useState<string | null>(null);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [loadingStreamUsers, setLoadingStreamUsers] = useState<string | null>(null);
+  const [isScheduled, setIsScheduled] = useState(false);
+  const [scheduledDateTime, setScheduledDateTime] = useState('');
 
   const searchUsers = async (query: string) => {
     if (query.length < 2) {
@@ -105,6 +111,21 @@ export default function SendMessagePage() {
       return;
     }
 
+    if (isScheduled && !scheduledDateTime) {
+      setError('Please select date and time for scheduled message');
+      return;
+    }
+
+    if (isScheduled && scheduledDateTime) {
+      const scheduledTime = new Date(scheduledDateTime);
+      const now = new Date();
+      
+      if (scheduledTime <= now) {
+        setError('Scheduled time must be in the future');
+        return;
+      }
+    }
+
     setError(null);
     setShowConfirmDialog(true);
   };
@@ -116,16 +137,22 @@ export default function SendMessagePage() {
     setSendResult(null);
 
     try {
+      const requestBody: any = {
+        recipients: selectedUsers,
+        message: {
+          text: messageText,
+          parse_mode: 'HTML'
+        }
+      };
+
+      if (isScheduled && scheduledDateTime) {
+        requestBody.scheduled_at = new Date(scheduledDateTime).toISOString();
+      }
+
       const response = await fetch('/api/messages/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          recipients: selectedUsers,
-          message: {
-            text: messageText,
-            parse_mode: 'HTML'
-          }
-        })
+        body: JSON.stringify(requestBody)
       });
 
       if (!response.ok) {
@@ -139,6 +166,8 @@ export default function SendMessagePage() {
       if (result.success) {
         setSelectedUsers([]);
         setMessageText('');
+        setIsScheduled(false);
+        setScheduledDateTime('');
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to send message');
@@ -184,6 +213,8 @@ export default function SendMessagePage() {
     setSearchQuery('');
     setSearchResults([]);
     setError(null);
+    setIsScheduled(false);
+    setScheduledDateTime('');
   };
 
   useEffect(() => {
@@ -344,6 +375,41 @@ export default function SendMessagePage() {
                   <span>Поддерживается HTML форматирование</span>
                   <span>{messageText.length}/4096</span>
                 </div>
+
+                <div className="space-y-3 pt-4 border-t">
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="schedule-message"
+                      checked={isScheduled}
+                      onChange={(e) => setIsScheduled(e.target.checked)}
+                      className="w-4 h-4"
+                    />
+                    <label htmlFor="schedule-message" className="text-sm font-medium">
+                      Запланировать отправку
+                    </label>
+                  </div>
+
+                  {isScheduled && (
+                    <div>
+                      <label className="block text-sm font-medium text-foreground mb-2">
+                        Дата и время отправки
+                      </label>
+                      <input
+                        type="datetime-local"
+                        value={scheduledDateTime}
+                        onChange={(e) => setScheduledDateTime(e.target.value)}
+                        className="px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        min={new Date().toISOString().slice(0, 16)}
+                      />
+                      {scheduledDateTime && (
+                        <div className="mt-2 text-sm text-muted-foreground">
+                          Сообщение будет отправлено: {new Date(scheduledDateTime).toLocaleString('ru-RU')}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               </CardContent>
             </Card>
 
@@ -356,12 +422,12 @@ export default function SendMessagePage() {
                 {isSending ? (
                   <>
                     <Loader2 className="mr-2 animate-spin" size={20} />
-                    Отправка...
+                    {isScheduled ? 'Планирование...' : 'Отправка...'}
                   </>
                 ) : (
                   <>
                     <Send className="mr-2" size={20} />
-                    Отправить сообщение
+                    {isScheduled ? 'Запланировать сообщение' : 'Отправить сообщение'}
                   </>
                 )}
               </Button>
@@ -379,25 +445,41 @@ export default function SendMessagePage() {
             {sendResult && (
               <Card className="border-green-200 bg-green-50">
                 <CardContent>
-                  <div className="text-green-800 font-medium">Сообщение отправлено</div>
-                  <div className="text-green-700 mt-1">
-                    Успешно: {sendResult.sent_count}, Неудачно: {sendResult.failed_count}
-                  </div>
-                  {sendResult.errors && sendResult.errors.length > 0 && (
-                    <div className="mt-2">
-                      <details className="text-sm">
-                        <summary className="cursor-pointer text-orange-700 font-medium">
-                          Ошибки доставки ({sendResult.errors.length})
-                        </summary>
-                        <div className="mt-2 space-y-1">
-                          {sendResult.errors.map((error, index) => (
-                            <div key={index} className="text-orange-600">
-                              User {error.user_id}: {error.error}
-                            </div>
-                          ))}
+                  {sendResult.scheduled ? (
+                    <>
+                      <div className="text-green-800 font-medium">Сообщение запланировано</div>
+                      <div className="text-green-700 mt-1">
+                        {sendResult.message || `Будет отправлено ${sendResult.recipient_count} получателям`}
+                      </div>
+                      {sendResult.scheduled_at && (
+                        <div className="text-green-600 text-sm mt-1">
+                          Время отправки: {new Date(sendResult.scheduled_at).toLocaleString('ru-RU')}
                         </div>
-                      </details>
-                    </div>
+                      )}
+                    </>
+                  ) : (
+                    <>
+                      <div className="text-green-800 font-medium">Сообщение отправлено</div>
+                      <div className="text-green-700 mt-1">
+                        Успешно: {sendResult.sent_count}, Неудачно: {sendResult.failed_count}
+                      </div>
+                      {sendResult.errors && sendResult.errors.length > 0 && (
+                        <div className="mt-2">
+                          <details className="text-sm">
+                            <summary className="cursor-pointer text-orange-700 font-medium">
+                              Ошибки доставки ({sendResult.errors.length})
+                            </summary>
+                            <div className="mt-2 space-y-1">
+                              {sendResult.errors.map((error, index) => (
+                                <div key={index} className="text-orange-600">
+                                  User {error.user_id}: {error.error}
+                                </div>
+                              ))}
+                            </div>
+                          </details>
+                        </div>
+                      )}
+                    </>
                   )}
                 </CardContent>
               </Card>
@@ -406,13 +488,15 @@ export default function SendMessagePage() {
             <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
               <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
                 <DialogHeader>
-                  <DialogTitle>Подтвердите отправку сообщения</DialogTitle>
+                  <DialogTitle>
+                    {isScheduled ? 'Подтвердите планирование сообщения' : 'Подтвердите отправку сообщения'}
+                  </DialogTitle>
                 </DialogHeader>
                 
                 <div className="space-y-4">
                   <div>
                     <p className="text-foreground mb-2">
-                      Вы собираетесь отправить сообщение <strong>{selectedUsers.length}</strong> получателям:
+                      Вы собираетесь {isScheduled ? 'запланировать' : 'отправить'} сообщение <strong>{selectedUsers.length}</strong> получателям:
                     </p>
                     <Card className="max-h-32 overflow-y-auto bg-muted/50">
                       <CardContent className="p-3">
@@ -428,6 +512,19 @@ export default function SendMessagePage() {
                       </CardContent>
                     </Card>
                   </div>
+
+                  {isScheduled && scheduledDateTime && (
+                    <div>
+                      <p className="text-foreground font-medium mb-2">Время отправки:</p>
+                      <Card className="bg-blue-50 border-blue-200">
+                        <CardContent className="p-3">
+                          <p className="text-sm text-blue-800 font-medium">
+                            {new Date(scheduledDateTime).toLocaleString('ru-RU')}
+                          </p>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  )}
 
                   <div>
                     <p className="text-foreground font-medium mb-2">Текст сообщения:</p>
@@ -452,7 +549,7 @@ export default function SendMessagePage() {
                     variant="destructive"
                     onClick={sendMessage}
                   >
-                    Да, отправить сообщение
+                    {isScheduled ? 'Да, запланировать сообщение' : 'Да, отправить сообщение'}
                   </Button>
                 </DialogFooter>
               </DialogContent>

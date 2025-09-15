@@ -129,7 +129,6 @@ HSL Dashboard is a Next.js-based web application that provides analytics and man
   - Template system integration
 
 - **Security & Safety Features**
-  - TEST_MODE for safe development testing
   - Confirmation dialogs with recipient details
   - User validation against database
   - Comprehensive audit logging
@@ -364,7 +363,6 @@ AND registrations = COUNT(free_lesson_registrations)
 - Environment variable validation
 - SQL injection prevention through parameterized queries
 - Rate limiting on external API calls
-- TEST_MODE for development safety
 
 ### 10.3 Operational Security
 - Database SSL connections required
