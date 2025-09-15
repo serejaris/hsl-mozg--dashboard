@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Send, Users, MessageSquare, Loader2, X } from 'lucide-react';
+import { Send, Users, MessageSquare, Loader2, X, Trash2 } from 'lucide-react';
 import MessagesNavigation from '@/components/MessagesNavigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -30,12 +30,20 @@ interface SendMessageResponse {
   message?: string;
 }
 
+interface InlineButton {
+  text: string;
+  url?: string;
+  callback_data?: string;
+  row: number;
+}
+
 export default function SendMessagePage() {
   const [streamStats, setStreamStats] = useState<{[stream: string]: number}>({});
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<TelegramUser[]>([]);
   const [selectedUsers, setSelectedUsers] = useState<TelegramUser[]>([]);
   const [messageText, setMessageText] = useState('');
+  const [buttons, setButtons] = useState<InlineButton[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [sendResult, setSendResult] = useState<SendMessageResponse | null>(null);
@@ -141,9 +149,13 @@ export default function SendMessagePage() {
         recipients: selectedUsers,
         message: {
           text: messageText,
-          parse_mode: 'HTML'
+          parse_mode: 'HTML',
         }
       };
+
+      if (buttons.length > 0) {
+        requestBody.message.buttons = buttons;
+      }
 
       if (isScheduled && scheduledDateTime) {
         requestBody.scheduled_at = new Date(scheduledDateTime).toISOString();
@@ -166,6 +178,7 @@ export default function SendMessagePage() {
       if (result.success) {
         setSelectedUsers([]);
         setMessageText('');
+        setButtons([]);
         setIsScheduled(false);
         setScheduledDateTime('');
       }
@@ -215,6 +228,37 @@ export default function SendMessagePage() {
     setError(null);
     setIsScheduled(false);
     setScheduledDateTime('');
+    setButtons([]);
+  };
+
+  const addButton = () => {
+    setButtons([...buttons, { text: '', row: buttons.length > 0 ? Math.max(...buttons.map(b => b.row)) + 1 : 1 }]);
+  };
+
+  const handleButtonChange = (index: number, field: keyof InlineButton, value: string | number) => {
+    const newButtons = [...buttons];
+    const button = newButtons[index];
+
+    if (field === 'row') {
+      button.row = Number(value);
+    } else if (field === 'text') {
+      button.text = String(value);
+    } else if (field === 'url') { // This field is for the combined URL/callback_data input
+      const stringValue = String(value);
+      if (stringValue.startsWith('http://') || stringValue.startsWith('https://') || stringValue.startsWith('/')) {
+        button.url = stringValue;
+        delete button.callback_data;
+      } else {
+        button.callback_data = stringValue;
+        delete button.url;
+      }
+    }
+
+    setButtons(newButtons);
+  };
+
+  const removeButton = (index: number) => {
+    setButtons(buttons.filter((_, i) => i !== index));
   };
 
   useEffect(() => {
@@ -413,6 +457,65 @@ export default function SendMessagePage() {
               </CardContent>
             </Card>
 
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <MessageSquare className="mr-2" size={20} />
+                  Inline-кнопки
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {buttons.map((button, index) => (
+                  <div key={index} className="flex items-end gap-2 p-2 border rounded-lg">
+                    <div className="flex-grow grid grid-cols-1 md:grid-cols-3 gap-2">
+                      <div>
+                        <label className="text-xs font-medium text-muted-foreground">Текст</label>
+                        <Input
+                          type="text"
+                          placeholder="Текст кнопки"
+                          value={button.text}
+                          onChange={(e) => handleButtonChange(index, 'text', e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-muted-foreground">URL или callback_data</label>
+                        <Input
+                          type="text"
+                          placeholder="https:// или callback_data"
+                          value={button.url || button.callback_data || ''}
+                          onChange={(e) => handleButtonChange(index, 'url', e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-medium text-muted-foreground">Ряд</label>
+                        <Input
+                          type="number"
+                          placeholder="Номер ряда"
+                          value={button.row}
+                          onChange={(e) => handleButtonChange(index, 'row', e.target.value)}
+                          className="w-24"
+                        />
+                      </div>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => removeButton(index)}
+                      className="text-muted-foreground hover:text-destructive"
+                    >
+                      <Trash2 size={18} />
+                    </Button>
+                  </div>
+                ))}
+                <Button variant="outline" onClick={addButton}>
+                  Добавить кнопку
+                </Button>
+                <p className="text-xs text-muted-foreground">
+                  <b>URL или callback_data</b>: Если значение начинается с <code>http://</code>, <code>https://</code>, или <code>/</code>, оно будет обработано как ссылка. В противном случае, это будет <code>callback_data</code> для внутренней логики бота (например, <code>select_course_1</code>).
+                </p>
+              </CardContent>
+            </Card>
+
             <div className="flex justify-end">
               <Button
                 onClick={handleSendClick}
@@ -536,6 +639,21 @@ export default function SendMessagePage() {
                       </CardContent>
                     </Card>
                   </div>
+
+                  {buttons.length > 0 && (
+                    <div>
+                      <p className="text-foreground font-medium mb-2">Inline-кнопки:</p>
+                      <Card className="max-h-32 overflow-y-auto bg-muted/50">
+                        <CardContent className="p-3 space-y-2">
+                          {buttons.map((btn, index) => (
+                            <div key={index} className="text-sm text-muted-foreground">
+                              <strong>{btn.text}</strong> &rarr; <code>{btn.url || btn.callback_data}</code> (Ряд: {btn.row})
+                            </div>
+                          ))}
+                        </CardContent>
+                      </Card>
+                    </div>
+                  )}
                 </div>
 
                 <DialogFooter className="flex gap-2">
