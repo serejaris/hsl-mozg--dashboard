@@ -18,6 +18,13 @@ interface TelegramUser {
   course_stream?: string | null;
 }
 
+interface ButtonConfig {
+  text: string;
+  url?: string;
+  callback_data?: string;
+  row?: number;
+}
+
 interface SendMessageResponse {
   success: boolean;
   message_id: number;
@@ -44,6 +51,11 @@ export default function SendMessagePage() {
   const [loadingStreamUsers, setLoadingStreamUsers] = useState<string | null>(null);
   const [isScheduled, setIsScheduled] = useState(false);
   const [scheduledDateTime, setScheduledDateTime] = useState('');
+  const [buttons, setButtons] = useState<ButtonConfig[]>([]);
+  const [newButtonText, setNewButtonText] = useState('');
+  const [newButtonType, setNewButtonType] = useState<'url' | 'callback'>('url');
+  const [newButtonValue, setNewButtonValue] = useState('');
+  const [newButtonRow, setNewButtonRow] = useState(0);
 
   const searchUsers = async (query: string) => {
     if (query.length < 2) {
@@ -141,7 +153,8 @@ export default function SendMessagePage() {
         recipients: selectedUsers,
         message: {
           text: messageText,
-          parse_mode: 'HTML'
+          parse_mode: 'HTML',
+          buttons: buttons.length > 0 ? buttons : undefined
         }
       };
 
@@ -162,12 +175,13 @@ export default function SendMessagePage() {
 
       const result = await response.json();
       setSendResult(result);
-      
+
       if (result.success) {
         setSelectedUsers([]);
         setMessageText('');
         setIsScheduled(false);
         setScheduledDateTime('');
+        setButtons([]);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to send message');
@@ -215,6 +229,38 @@ export default function SendMessagePage() {
     setError(null);
     setIsScheduled(false);
     setScheduledDateTime('');
+  };
+
+  const addButton = () => {
+    if (!newButtonText.trim()) {
+      setError('Button text is required');
+      return;
+    }
+
+    if (!newButtonValue.trim()) {
+      setError(newButtonType === 'url' ? 'Button URL is required' : 'Button callback data is required');
+      return;
+    }
+
+    const newButton: ButtonConfig = {
+      text: newButtonText.trim(),
+      row: newButtonRow,
+    };
+
+    if (newButtonType === 'url') {
+      newButton.url = newButtonValue.trim();
+    } else {
+      newButton.callback_data = newButtonValue.trim();
+    }
+
+    setButtons([...buttons, newButton]);
+    setNewButtonText('');
+    setNewButtonValue('');
+    setError(null);
+  };
+
+  const removeButton = (index: number) => {
+    setButtons(buttons.filter((_, i) => i !== index));
   };
 
   useEffect(() => {
@@ -377,6 +423,106 @@ export default function SendMessagePage() {
                 </div>
 
                 <div className="space-y-3 pt-4 border-t">
+                  <h3 className="text-sm font-medium text-foreground">
+                    Кнопки (опционально)
+                  </h3>
+
+                  {buttons.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-sm text-muted-foreground">Добавленные кнопки:</p>
+                      <div className="flex flex-wrap gap-2">
+                        {buttons.map((button, index) => (
+                          <Badge
+                            key={index}
+                            variant="secondary"
+                            className="px-3 py-2 flex items-center gap-2"
+                          >
+                            <span>
+                              {button.text} ({button.url ? 'URL' : 'Callback'})
+                              {button.row !== undefined && ` - Ряд ${button.row}`}
+                            </span>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => removeButton(index)}
+                              className="h-auto p-0 text-muted-foreground hover:text-foreground"
+                            >
+                              <X size={14} />
+                            </Button>
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-sm font-medium text-foreground mb-2">
+                        Текст кнопки
+                      </label>
+                      <Input
+                        type="text"
+                        value={newButtonText}
+                        onChange={(e) => setNewButtonText(e.target.value)}
+                        placeholder="Например: Подробнее"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-foreground mb-2">
+                        Тип кнопки
+                      </label>
+                      <select
+                        value={newButtonType}
+                        onChange={(e) => setNewButtonType(e.target.value as 'url' | 'callback')}
+                        className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      >
+                        <option value="url">URL (ссылка)</option>
+                        <option value="callback">Callback (payload)</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-foreground mb-2">
+                        {newButtonType === 'url' ? 'URL' : 'Callback данные (payload)'}
+                      </label>
+                      <Input
+                        type="text"
+                        value={newButtonValue}
+                        onChange={(e) => setNewButtonValue(e.target.value)}
+                        placeholder={
+                          newButtonType === 'url'
+                            ? 'https://example.com'
+                            : 'action_name'
+                        }
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-foreground mb-2">
+                        Ряд кнопки
+                      </label>
+                      <Input
+                        type="number"
+                        value={newButtonRow}
+                        onChange={(e) => setNewButtonRow(parseInt(e.target.value) || 0)}
+                        placeholder="0"
+                        min="0"
+                      />
+                    </div>
+                  </div>
+
+                  <Button
+                    onClick={addButton}
+                    variant="outline"
+                    size="sm"
+                    className="w-full md:w-auto"
+                  >
+                    Добавить кнопку
+                  </Button>
+                </div>
+
+                <div className="space-y-3 pt-4 border-t">
                   <div className="flex items-center space-x-2">
                     <input
                       type="checkbox"
@@ -536,6 +682,27 @@ export default function SendMessagePage() {
                       </CardContent>
                     </Card>
                   </div>
+
+                  {buttons.length > 0 && (
+                    <div>
+                      <p className="text-foreground font-medium mb-2">Кнопки:</p>
+                      <Card className="bg-muted/50">
+                        <CardContent className="p-3">
+                          <div className="space-y-1">
+                            {buttons.map((button, index) => (
+                              <div key={index} className="text-sm text-foreground">
+                                <strong>{button.text}</strong>
+                                {' - '}
+                                {button.url && `URL: ${button.url}`}
+                                {button.callback_data && `Callback: ${button.callback_data}`}
+                                {button.row !== undefined && ` (Ряд ${button.row})`}
+                              </div>
+                            ))}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+                  )}
                 </div>
 
                 <DialogFooter className="flex gap-2">

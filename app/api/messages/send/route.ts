@@ -126,13 +126,14 @@ export async function POST(request: NextRequest) {
       timestamp: new Date().toISOString()
     });
 
-    // Create message history entry
+    // Create message history entry with button configuration
     const messageId = await createMessageHistory(
       data.message.text,
       validatedRecipients.length,
       recipientType,
       recipientGroup,
-      scheduledAt
+      scheduledAt,
+      data.message.buttons || null
     );
 
     // Add recipients to database

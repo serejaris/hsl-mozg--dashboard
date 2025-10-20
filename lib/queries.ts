@@ -81,6 +81,13 @@ export interface TelegramUser {
   course_stream?: string | null;
 }
 
+export interface ButtonConfig {
+  text: string;
+  url?: string;
+  callback_data?: string;
+  row?: number;
+}
+
 export interface MessageHistory {
   id: number;
   message_text: string;
@@ -89,6 +96,7 @@ export interface MessageHistory {
   successful_deliveries: number;
   recipient_type: 'individual' | 'group';
   recipient_group: string | null;
+  button_config?: ButtonConfig[] | null;
 }
 
 export interface MessageRecipient {
@@ -632,19 +640,20 @@ export async function searchUsers(query: string): Promise<TelegramUser[]> {
 
 // Create new message history entry
 export async function createMessageHistory(
-  messageText: string, 
+  messageText: string,
   totalRecipients: number,
   recipientType: 'individual' | 'group' = 'individual',
   recipientGroup: string | null = null,
-  scheduledAt: string | null = null
+  scheduledAt: string | null = null,
+  buttonConfig: ButtonConfig[] | null = null
 ): Promise<number> {
   const client = await pool.connect();
   try {
     const result = await client.query(`
-      INSERT INTO message_history (message_text, total_recipients, recipient_type, recipient_group, scheduled_at)
-      VALUES ($1, $2, $3, $4, $5)
+      INSERT INTO message_history (message_text, total_recipients, recipient_type, recipient_group, scheduled_at, button_config)
+      VALUES ($1, $2, $3, $4, $5, $6)
       RETURNING id
-    `, [messageText, totalRecipients, recipientType, recipientGroup, scheduledAt]);
+    `, [messageText, totalRecipients, recipientType, recipientGroup, scheduledAt, buttonConfig ? JSON.stringify(buttonConfig) : null]);
 
     return result.rows[0].id;
   } finally {
@@ -716,7 +725,7 @@ export async function getMessageHistory(
   const client = await pool.connect();
   try {
     let query = `
-      SELECT id, message_text, sent_at, total_recipients, successful_deliveries, recipient_type, recipient_group
+      SELECT id, message_text, sent_at, total_recipients, successful_deliveries, recipient_type, recipient_group, button_config
       FROM message_history
       WHERE 1=1
     `;
@@ -728,7 +737,7 @@ export async function getMessageHistory(
       query += ` AND recipient_type = $${paramIndex++}`;
       params.push(recipientType);
     }
-    
+
     if (recipientGroup) {
       query += ` AND recipient_group = $${paramIndex++}`;
       params.push(recipientGroup);
@@ -738,7 +747,7 @@ export async function getMessageHistory(
     params.push(limit, offset);
 
     const result = await client.query(query, params);
-    
+
     return result.rows.map(row => ({
       id: row.id,
       message_text: row.message_text,
@@ -746,7 +755,8 @@ export async function getMessageHistory(
       total_recipients: row.total_recipients,
       successful_deliveries: row.successful_deliveries || 0,
       recipient_type: row.recipient_type || 'individual',
-      recipient_group: row.recipient_group
+      recipient_group: row.recipient_group,
+      button_config: row.button_config || null
     }));
   } finally {
     client.release();
