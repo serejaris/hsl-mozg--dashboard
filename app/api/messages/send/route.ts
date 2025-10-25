@@ -17,8 +17,11 @@ const bot = new TelegramBot(process.env.BOT_TOKEN || '', { polling: false });
 interface SendMessageRequest {
   recipients: TelegramUser[];
   message: {
-    text: string;
-    parse_mode: 'HTML';
+    type?: 'text' | 'video' | 'document';
+    text?: string;
+    parse_mode?: 'HTML';
+    video_file_id?: string;
+    document_file_id?: string;
     buttons?: Array<{
       text: string;
       url?: string;
@@ -40,6 +43,13 @@ export async function POST(request: NextRequest) {
     }
 
     const data: SendMessageRequest = await request.json();
+    const messageType: 'text' | 'video' | 'document' = ['video', 'document'].includes(data.message?.type || '')
+      ? (data.message!.type as 'video' | 'document')
+      : 'text';
+    const messageText = data.message?.text ?? '';
+    const trimmedMessageText = messageText.trim();
+    const videoFileId = data.message?.video_file_id?.trim() || null;
+    const documentFileId = data.message?.document_file_id?.trim() || null;
 
     // Validate request data
     if (!data.recipients || data.recipients.length === 0) {
@@ -49,18 +59,42 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!data.message?.text || data.message.text.trim().length === 0) {
-      return NextResponse.json(
-        { error: 'Message text is required' },
-        { status: 400 }
-      );
-    }
+    if (messageType === 'text') {
+      if (!data.message?.text || trimmedMessageText.length === 0) {
+        return NextResponse.json(
+          { error: 'Message text is required' },
+          { status: 400 }
+        );
+      }
 
-    if (data.message.text.length > 4096) {
-      return NextResponse.json(
-        { error: 'Message text too long (max 4096 characters)' },
-        { status: 400 }
-      );
+      if (messageText.length > 4096) {
+        return NextResponse.json(
+          { error: 'Message text too long (max 4096 characters)' },
+          { status: 400 }
+        );
+      }
+    } else {
+      const requiredId = messageType === 'video' ? videoFileId : documentFileId;
+      if (!requiredId) {
+        return NextResponse.json(
+          { error: `${messageType === 'video' ? 'Video' : 'Document'} file_id is required` },
+          { status: 400 }
+        );
+      }
+
+      if (messageText.length > 1024) {
+        return NextResponse.json(
+          { error: 'Caption too long for media (max 1024 characters)' },
+          { status: 400 }
+        );
+      }
+
+      if (data.scheduled_at && data.scheduled_at.trim().length > 0) {
+        return NextResponse.json(
+          { error: 'Scheduled sending is not supported for media messages yet' },
+          { status: 400 }
+        );
+      }
     }
 
     // Validate all user IDs exist in database
@@ -118,6 +152,7 @@ export async function POST(request: NextRequest) {
     console.log('📊 Message classification:', {
       recipientsCount: validatedRecipients.length,
       uniqueStreams,
+      messageType,
       isGroupMessage,
       recipientType,
       recipientGroup,
@@ -126,9 +161,16 @@ export async function POST(request: NextRequest) {
       timestamp: new Date().toISOString()
     });
 
+    let historyMessageText = messageText;
+    if (messageType === 'video') {
+      historyMessageText = trimmedMessageText.length > 0 ? messageText : '[video]';
+    } else if (messageType === 'document') {
+      historyMessageText = trimmedMessageText.length > 0 ? messageText : '[document]';
+    }
+
     // Create message history entry
     const messageId = await createMessageHistory(
-      data.message.text,
+      historyMessageText,
       validatedRecipients.length,
       recipientType,
       recipientGroup,
@@ -146,11 +188,14 @@ export async function POST(request: NextRequest) {
       await createAuditLogEntry(
         'message_scheduled',
         validatedRecipients.length,
-        data.message.text,
+        historyMessageText,
         true,
         {
           messageId,
           scheduledAt,
+          messageType,
+          videoFileId: messageType === 'video' ? videoFileId : undefined,
+          documentFileId: messageType === 'document' ? documentFileId : undefined,
           recipients: validatedRecipients.map(r => ({ userId: r.user_id, username: r.username || 'no_username' }))
         }
       );
@@ -166,9 +211,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Prepare Telegram message options
-    const messageOptions: any = {
-      parse_mode: 'HTML' as const,
-    };
+    const baseMessageOptions: any = {};
 
     // Add inline keyboard if buttons provided
     if (data.message.buttons && data.message.buttons.length > 0) {
@@ -201,7 +244,7 @@ export async function POST(request: NextRequest) {
         keyboardRows.push(currentRow);
       }
 
-      messageOptions.reply_markup = {
+      baseMessageOptions.reply_markup = {
         inline_keyboard: keyboardRows
       };
     }
@@ -211,6 +254,7 @@ export async function POST(request: NextRequest) {
     let sentCount = 0;
     let failedCount = 0;
     const errors: Array<{ user_id: number; error: string }> = [];
+    const hasCaption = trimmedMessageText.length > 0;
 
     // Send messages in batches to avoid rate limiting
     const batchSize = 10;
@@ -219,11 +263,43 @@ export async function POST(request: NextRequest) {
       
       for (const recipient of batch) {
         try {
-          const telegramMessage = await bot.sendMessage(
-            recipient.user_id,
-            data.message.text,
-            messageOptions
-          );
+          let telegramMessage;
+
+          if (messageType === 'video') {
+            const videoOptions = { ...baseMessageOptions };
+
+            if (hasCaption) {
+              videoOptions.caption = messageText;
+              videoOptions.parse_mode = 'HTML';
+            }
+
+            telegramMessage = await bot.sendVideo(
+              recipient.user_id,
+              videoFileId!,
+              videoOptions
+            );
+          } else if (messageType === 'document') {
+            const documentOptions = { ...baseMessageOptions };
+
+            if (hasCaption) {
+              documentOptions.caption = messageText;
+              documentOptions.parse_mode = 'HTML';
+            }
+
+            telegramMessage = await bot.sendDocument(
+              recipient.user_id,
+              documentFileId!,
+              documentOptions
+            );
+          } else {
+            const textOptions = { ...baseMessageOptions, parse_mode: 'HTML' as const };
+
+            telegramMessage = await bot.sendMessage(
+              recipient.user_id,
+              messageText,
+              textOptions
+            );
+          }
           
           await updateRecipientStatus(messageId, recipient.user_id, 'sent', telegramMessage.message_id);
           sentCount++;
@@ -261,16 +337,22 @@ export async function POST(request: NextRequest) {
     await createAuditLogEntry(
       'message_send_production',
       validatedRecipients.length,
-      data.message.text,
+      historyMessageText,
       sentCount > 0,
-      {
-        sentCount,
-        failedCount,
-        recipients: validatedRecipients.map(r => ({ userId: r.user_id, username: r.username || 'no_username' })),
-        errors: errors.length > 0 ? errors : undefined,
-        messageOptions: messageOptions
-      }
-    );
+        {
+          sentCount,
+          failedCount,
+          recipients: validatedRecipients.map(r => ({ userId: r.user_id, username: r.username || 'no_username' })),
+          errors: errors.length > 0 ? errors : undefined,
+          messageOptions: {
+            type: messageType,
+            videoFileId: messageType === 'video' ? videoFileId : undefined,
+            documentFileId: messageType === 'document' ? documentFileId : undefined,
+            hasCaption,
+            baseOptions: baseMessageOptions
+          }
+        }
+      );
 
     return NextResponse.json({
       success: true,

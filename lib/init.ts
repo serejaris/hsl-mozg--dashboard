@@ -5,6 +5,11 @@ let isInitialized = false;
 let initAttempts = 0;
 
 export function initializeApp(): void {
+  if (shouldSkipInitialization()) {
+    console.log('⏭️ Application initialization skipped by configuration');
+    return;
+  }
+
   initAttempts++;
   console.log(`🔄 Initialization attempt #${initAttempts}`);
   
@@ -27,7 +32,15 @@ export function initializeApp(): void {
   }
 }
 
+function shouldSkipInitialization(): boolean {
+  return process.env.SKIP_APP_INIT === '1' || process.env.SKIP_APP_INIT === 'true';
+}
+
 // Auto-initialize when this module is imported (for server-side)
 if (typeof window === 'undefined') {
-  initializeApp();
+  if (shouldSkipInitialization()) {
+    console.log('⏭️ Application initialization skipped (SKIP_APP_INIT)');
+  } else {
+    initializeApp();
+  }
 }

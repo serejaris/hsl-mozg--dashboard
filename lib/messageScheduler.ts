@@ -1,6 +1,6 @@
 import { CronJob } from 'cron';
 import TelegramBot from 'node-telegram-bot-api';
-import pool from '@/lib/db';
+import pool, { isDbConfigured } from '@/lib/db';
 import {
   updateRecipientStatus,
   updateMessageDeliveryStats,
@@ -21,6 +21,12 @@ class MessageSchedulerService {
   }
 
   public start(): void {
+    const skipReason = this.getSkipReason();
+    if (skipReason) {
+      console.log(`⚪️ Message scheduler disabled: ${skipReason}`);
+      return;
+    }
+
     if (this.cronJob) {
       console.log('📅 Message scheduler is already running');
       return;
@@ -40,6 +46,22 @@ class MessageSchedulerService {
     );
 
     console.log(`📅 Message scheduler started (${instanceId}) - checking every minute`);
+  }
+
+  private getSkipReason(): string | null {
+    if (process.env.SKIP_APP_INIT === '1' || process.env.SKIP_MESSAGE_SCHEDULER === '1') {
+      return 'SKIP_APP_INIT flag is set';
+    }
+
+    if (!process.env.BOT_TOKEN) {
+      return 'BOT_TOKEN is not configured';
+    }
+
+    if (!isDbConfigured) {
+      return 'database configuration missing';
+    }
+
+    return null;
   }
 
   public stop(): void {

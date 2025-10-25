@@ -74,7 +74,7 @@ export default function HotLeads() {
           hotLeads.map((lead, index) => {
             const telegramLink = getTelegramLink(lead.username);
             return (
-              <div key={lead.user_id} className="flex items-center justify-between">
+              <div key={`${lead.user_id}-${index}`} className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span className="text-lg">{getScoreIcon(lead.lead_score)}</span>
                   <div>
