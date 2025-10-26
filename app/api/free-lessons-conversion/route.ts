@@ -1,16 +1,6 @@
-import { NextResponse } from 'next/server';
 import { getLessonConversion } from '@/lib/queries';
+import { createApiHandler } from '@/lib/apiHandler';
 
-export async function GET() {
-  try {
-    const conversionData = await getLessonConversion();
-    
-    return NextResponse.json(conversionData);
-  } catch (error) {
-    console.error('Failed to fetch lesson conversion data:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch lesson conversion data' },
-      { status: 500 }
-    );
-  }
-}
+export const GET = createApiHandler(async () => {
+  return getLessonConversion();
+}, { logLabel: 'free-lessons-conversion' });

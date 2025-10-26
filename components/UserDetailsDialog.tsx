@@ -9,46 +9,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import UserEditForm from '@/components/UserEditForm';
 import UserBookingsTable from '@/components/UserBookingsTable';
-
-interface UserDetailInfo {
-  user_id: number;
-  username: string | null;
-  first_name: string | null;
-  last_activity?: string;
-  total_bookings: number;
-  total_events: number;
-  total_free_lessons: number;
-  latest_stream: string | null;
-  latest_payment_status: number | null;
-}
-
-interface UserBookingInfo {
-  id: number;
-  user_id: number;
-  course_id: number;
-  course_stream: string | null;
-  confirmed: number;
-  created_at: string;
-  referral_code: string | null;
-  discount_percent: number | null;
-}
-
-interface UserEventInfo {
-  id: number;
-  event_type: string;
-  created_at: string;
-  details: any;
-}
-
-interface UserFreeLessonInfo {
-  id: number;
-  user_id: number;
-  email: string | null;
-  registered_at: string;
-  notification_sent: boolean;
-  lesson_type: string | null;
-  lesson_date: string | null;
-}
+import StatusBadge from '@/components/StatusBadge';
+import StreamBadge from '@/components/StreamBadge';
+import { formatDate, formatDateTime } from '@/lib/date';
+import type {
+  UserBookingInfo,
+  UserDetailInfo,
+  UserEventInfo,
+  UserFreeLessonInfo
+} from '@/lib/types';
 
 interface UserDetailsResponse {
   success: boolean;
@@ -111,65 +80,6 @@ export default function UserDetailsDialog({ userId, open, onClose }: UserDetails
   const handleBookingUpdate = () => {
     // Refresh user details after booking update
     fetchUserDetails();
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString('ru-RU', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
-  const formatShortDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('ru-RU', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
-  };
-
-  const getStatusBadge = (confirmed: number) => {
-    switch (confirmed) {
-      case 2:
-        return (
-          <Badge variant="default" className="bg-green-100 text-green-800 hover:bg-green-200">
-            Подтверждено
-          </Badge>
-        );
-      case 1:
-        return (
-          <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 hover:bg-yellow-200">
-            В ожидании
-          </Badge>
-        );
-      case -1:
-        return (
-          <Badge variant="destructive">
-            Отменено
-          </Badge>
-        );
-      default:
-        return (
-          <Badge variant="outline">
-            Неизвестно
-          </Badge>
-        );
-    }
-  };
-
-  const getStreamName = (stream: string | null) => {
-    if (!stream) return '—';
-    
-    const streamNames: { [key: string]: string } = {
-      '3rd_stream': '3-й поток',
-      '4th_stream': '4-й поток',
-      '5th_stream': '5-й поток'
-    };
-
-    return streamNames[stream] || stream;
   };
 
   const formatUserName = (user: UserDetailInfo) => {
@@ -268,15 +178,15 @@ export default function UserDetailsDialog({ userId, open, onClose }: UserDetails
                       <span className="text-sm text-muted-foreground">Username:</span>
                       <span className="ml-2">{user.username ? `@${user.username}` : '—'}</span>
                     </div>
-                    <div>
+                    <div className="flex items-center gap-2">
                       <span className="text-sm text-muted-foreground">Поток:</span>
-                      <span className="ml-2">{getStreamName(user.latest_stream)}</span>
+                      {user.latest_stream ? <StreamBadge stream={user.latest_stream} /> : '—'}
                     </div>
                     <div>
                       <span className="text-sm text-muted-foreground">Статус:</span>
                       <span className="ml-2">
                         {user.latest_payment_status !== null 
-                          ? getStatusBadge(user.latest_payment_status)
+                          ? <StatusBadge status={user.latest_payment_status} />
                           : <Badge variant="outline">Нет бронирований</Badge>
                         }
                       </span>
@@ -284,7 +194,7 @@ export default function UserDetailsDialog({ userId, open, onClose }: UserDetails
                     <div>
                       <span className="text-sm text-muted-foreground">Последняя активность:</span>
                       <span className="ml-2 text-sm">
-                        {user.last_activity ? formatShortDate(user.last_activity) : '—'}
+                        {user.last_activity ? formatDate(user.last_activity) : '—'}
                       </span>
                     </div>
                   </CardContent>
@@ -334,7 +244,7 @@ export default function UserDetailsDialog({ userId, open, onClose }: UserDetails
                         <div key={event.id} className="text-sm">
                           <div className="font-medium">{event.event_type}</div>
                           <div className="text-muted-foreground text-xs">
-                            {formatShortDate(event.created_at)}
+                            {formatDate(event.created_at)}
                           </div>
                         </div>
                       ))}
@@ -381,7 +291,7 @@ export default function UserDetailsDialog({ userId, open, onClose }: UserDetails
                               )}
                             </div>
                             <span className="text-xs text-muted-foreground">
-                              {formatDate(event.created_at)}
+                              {formatDateTime(event.created_at)}
                             </span>
                           </div>
                         </div>
@@ -426,11 +336,11 @@ export default function UserDetailsDialog({ userId, open, onClose }: UserDetails
                           <div className="grid grid-cols-2 gap-4 text-sm">
                             <div>
                               <span className="text-muted-foreground">Зарегистрирован:</span>
-                              <div>{formatDate(lesson.registered_at)}</div>
+                              <div>{formatDateTime(lesson.registered_at)}</div>
                             </div>
                             <div>
                               <span className="text-muted-foreground">Дата урока:</span>
-                              <div>{lesson.lesson_date ? formatShortDate(lesson.lesson_date) : '—'}</div>
+                              <div>{lesson.lesson_date ? formatDate(lesson.lesson_date) : '—'}</div>
                             </div>
                           </div>
                         </div>

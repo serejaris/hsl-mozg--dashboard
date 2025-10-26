@@ -1,60 +1,40 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import EventsChart from '@/components/EventsChart';
-import { TrendingUp, Users, Activity, RefreshCw } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import PieDistributionChart from '@/components/PieDistributionChart';
+import PageHeader from '@/components/PageHeader';
+import { TrendingUp, Users, Activity } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-
-
-interface DailyStats {
-  date: string;
-  newUsers: number;
-  bookings: number;
-  events: number;
-}
-
-interface EventStats {
-  eventType: string;
-  count: number;
-}
+import type { DailyStats, EventStats } from '@/lib/types';
+import { useRefreshableData } from '@/hooks/useRefreshableData';
 
 export default function AnalyticsPage() {
   const [dailyStats, setDailyStats] = useState<DailyStats[]>([]);
   const [topEvents, setTopEvents] = useState<EventStats[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { refresh, isRefreshing, lastUpdated, error } = useRefreshableData(async () => {
+    const [dailyResponse, eventsResponse] = await Promise.all([
+      fetch('/api/events?type=daily&days=30'),
+      fetch('/api/events')
+    ]);
 
-  const fetchData = async () => {
-    try {
-      setLoading(true);
-      const [dailyResponse, eventsResponse] = await Promise.all([
-        fetch('/api/events?type=daily&days=30'),
-        fetch('/api/events')
-      ]);
-
-      if (!dailyResponse.ok || !eventsResponse.ok) {
-        throw new Error('Failed to fetch analytics data');
-      }
-
-      const dailyData = await dailyResponse.json();
-      const eventsData = await eventsResponse.json();
-
-      setDailyStats(dailyData.reverse()); // Show oldest to newest
-      setTopEvents(eventsData);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-    } finally {
-      setLoading(false);
+    if (!dailyResponse.ok || !eventsResponse.ok) {
+      throw new Error('Failed to fetch analytics data');
     }
-  };
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+    const [dailyData, eventsData] = await Promise.all([
+      dailyResponse.json(),
+      eventsResponse.json()
+    ]);
 
-  if (loading) {
+    setDailyStats(dailyData.reverse());
+    setTopEvents(eventsData);
+  });
+
+  const isInitialLoading = !lastUpdated && isRefreshing;
+
+  if (isInitialLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-muted-foreground">Загрузка аналитики...</div>
@@ -78,22 +58,12 @@ export default function AnalyticsPage() {
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-foreground">Analytics</h1>
-        <div className="flex items-center gap-4">
-          <div className="text-sm text-muted-foreground">
-            Обновлено: {new Date().toLocaleTimeString('ru-RU')}
-          </div>
-          <Button
-            onClick={fetchData}
-            disabled={loading}
-            size="sm"
-          >
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-            Обновить
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        title="Analytics"
+        lastUpdated={lastUpdated}
+        onRefresh={refresh}
+        isRefreshing={isRefreshing}
+      />
 
       <div className="grid gap-6 md:grid-cols-3">
         <Card>
@@ -143,6 +113,25 @@ export default function AnalyticsPage() {
       </div>
 
       <EventsChart dailyData={dailyStats} topEvents={topEvents} />
+
+      {topEvents.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Распределение событий</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <PieDistributionChart
+              title="Типы событий"
+              data={topEvents.map((e) => ({
+                name: e.eventType,
+                value: e.count,
+                key: e.eventType,
+              }))}
+              height={280}
+            />
+          </CardContent>
+        </Card>
+      )}
 
       {topEvents.length > 0 && (
         <Card>

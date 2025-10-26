@@ -1,28 +1,13 @@
-import { NextRequest, NextResponse } from 'next/server';
 import { getMessageRecipients } from '@/lib/queries';
+import { createApiHandler, httpError } from '@/lib/apiHandler';
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const resolvedParams = await params;
-    const messageId = parseInt(resolvedParams.id);
+export const GET = createApiHandler(async (_request, context) => {
+  const params = (context?.params ?? {}) as { id?: string };
+  const messageId = params?.id ? parseInt(params.id, 10) : NaN;
 
-    if (isNaN(messageId) || messageId <= 0) {
-      return NextResponse.json(
-        { error: 'Invalid message ID' },
-        { status: 400 }
-      );
-    }
-
-    const recipients = await getMessageRecipients(messageId);
-    return NextResponse.json(recipients);
-  } catch (error) {
-    console.error('Error fetching message recipients:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch message recipients' },
-      { status: 500 }
-    );
+  if (Number.isNaN(messageId) || messageId <= 0) {
+    throw httpError(400, 'Invalid message ID');
   }
-}
+
+  return getMessageRecipients(messageId);
+}, { logLabel: 'message-recipients' });

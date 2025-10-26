@@ -1,19 +1,13 @@
-import { NextResponse, NextRequest } from 'next/server';
 import { getFreeLessonRegistrations } from '@/lib/queries';
+import { createApiHandler, httpError } from '@/lib/apiHandler';
 
-export async function GET(request: NextRequest) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const limit = parseInt(searchParams.get('limit') || '50');
-    
-    const freeLessons = await getFreeLessonRegistrations(limit);
-    
-    return NextResponse.json(freeLessons);
-  } catch (error) {
-    console.error('Failed to fetch free lessons:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch free lessons data' },
-      { status: 500 }
-    );
+export const GET = createApiHandler(async (request) => {
+  const limitParam = request.nextUrl.searchParams.get('limit');
+  const parsedLimit = limitParam ? parseInt(limitParam, 10) : 50;
+
+  if (Number.isNaN(parsedLimit) || parsedLimit < 1 || parsedLimit > 500) {
+    throw httpError(400, 'limit must be between 1 and 500');
   }
-}
+
+  return getFreeLessonRegistrations(parsedLimit);
+}, { logLabel: 'free-lessons' });

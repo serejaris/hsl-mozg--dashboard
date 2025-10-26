@@ -1,28 +1,27 @@
-import { NextResponse } from 'next/server';
 import { getTopEvents, getDailyStats, getRecentEvents } from '@/lib/queries';
+import { createApiHandler, httpError } from '@/lib/apiHandler';
 
-export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
+export const GET = createApiHandler(async (request) => {
+  const searchParams = request.nextUrl.searchParams;
   const type = searchParams.get('type');
-  const days = searchParams.get('days');
-  const limit = searchParams.get('limit');
+  const daysParam = searchParams.get('days');
+  const limitParam = searchParams.get('limit');
 
-  try {
-    if (type === 'daily') {
-      const dailyStats = await getDailyStats(days ? parseInt(days) : 30);
-      return NextResponse.json(dailyStats);
-    } else if (type === 'recent') {
-      const recentEvents = await getRecentEvents(limit ? parseInt(limit) : 30);
-      return NextResponse.json(recentEvents);
-    } else {
-      const topEvents = await getTopEvents(10);
-      return NextResponse.json(topEvents);
+  if (type === 'daily') {
+    const days = daysParam ? parseInt(daysParam, 10) : 30;
+    if (Number.isNaN(days) || days < 1 || days > 365) {
+      throw httpError(400, 'days must be between 1 and 365');
     }
-  } catch (error) {
-    console.error('Error fetching events:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch events' },
-      { status: 500 }
-    );
+    return getDailyStats(days);
   }
-}
+
+  if (type === 'recent') {
+    const limit = limitParam ? parseInt(limitParam, 10) : 30;
+    if (Number.isNaN(limit) || limit < 1 || limit > 200) {
+      throw httpError(400, 'limit must be between 1 and 200');
+    }
+    return getRecentEvents(limit);
+  }
+
+  return getTopEvents(10);
+}, { logLabel: 'events' });

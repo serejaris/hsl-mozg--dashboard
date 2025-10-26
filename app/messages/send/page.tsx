@@ -9,14 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
-
-
-interface TelegramUser {
-  user_id: number;
-  username: string | null;
-  first_name: string | null;
-  course_stream?: string | null;
-}
+import type { TelegramUser } from '@/lib/types';
 
 interface InlineButton {
   text: string;
@@ -37,6 +30,19 @@ interface SendMessageResponse {
   message?: string;
 }
 
+interface SavedMessageDraft {
+  selectedUsers: TelegramUser[];
+  messageText: string;
+  messageType: 'text' | 'video' | 'document';
+  mediaFileId: string;
+  isScheduled: boolean;
+  scheduledDateTime: string;
+  buttons: InlineButton[];
+  updatedAt: string;
+}
+
+const LAST_MESSAGE_STORAGE_KEY = 'messages:last-message-draft';
+
 export default function SendMessagePage() {
   const [streamStats, setStreamStats] = useState<{[stream: string]: number}>({});
   const [nonCourseUsersCount, setNonCourseUsersCount] = useState<number>(0);
@@ -56,6 +62,7 @@ export default function SendMessagePage() {
   const [isScheduled, setIsScheduled] = useState(false);
   const [scheduledDateTime, setScheduledDateTime] = useState('');
   const [buttons, setButtons] = useState<InlineButton[]>([]);
+  const [isDraftInitialized, setIsDraftInitialized] = useState(false);
 
   const isVideoMessage = messageType === 'video';
   const isDocumentMessage = messageType === 'document';
@@ -64,6 +71,56 @@ export default function SendMessagePage() {
   const isMessageReady = isMediaMessage ? mediaFileId.trim().length > 0 : messageText.trim().length > 0;
 
   const developerShortcutUsername = 'serejaris';
+
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      setIsDraftInitialized(true);
+      return;
+    }
+
+    try {
+      const savedDraft = window.localStorage.getItem(LAST_MESSAGE_STORAGE_KEY);
+      if (!savedDraft) {
+        return;
+      }
+
+      const parsedDraft = JSON.parse(savedDraft) as Partial<SavedMessageDraft>;
+
+      setSelectedUsers(parsedDraft.selectedUsers ?? []);
+      setMessageText(parsedDraft.messageText ?? '');
+      if (parsedDraft.messageType === 'video' || parsedDraft.messageType === 'document' || parsedDraft.messageType === 'text') {
+        setMessageType(parsedDraft.messageType);
+      }
+      setMediaFileId(parsedDraft.mediaFileId ?? '');
+      setIsScheduled(Boolean(parsedDraft.isScheduled));
+      setScheduledDateTime(parsedDraft.scheduledDateTime ?? '');
+      setButtons(parsedDraft.buttons ?? []);
+    } catch (draftError) {
+      console.error('Не удалось восстановить сохранённое сообщение:', draftError);
+      window.localStorage.removeItem(LAST_MESSAGE_STORAGE_KEY);
+    } finally {
+      setIsDraftInitialized(true);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!isDraftInitialized || typeof window === 'undefined') {
+      return;
+    }
+
+    const draft: SavedMessageDraft = {
+      selectedUsers,
+      messageText,
+      messageType,
+      mediaFileId,
+      isScheduled,
+      scheduledDateTime,
+      buttons,
+      updatedAt: new Date().toISOString(),
+    };
+
+    window.localStorage.setItem(LAST_MESSAGE_STORAGE_KEY, JSON.stringify(draft));
+  }, [selectedUsers, messageText, messageType, mediaFileId, isScheduled, scheduledDateTime, buttons, isDraftInitialized]);
 
   const searchUsers = async (query: string) => {
     if (query.length < 2) {
@@ -244,15 +301,6 @@ export default function SendMessagePage() {
 
       const result = await response.json();
       setSendResult(result);
-      
-      if (result.success) {
-        setSelectedUsers([]);
-        setMessageText('');
-        setMediaFileId('');
-        setIsScheduled(false);
-        setScheduledDateTime('');
-        setButtons([]);
-      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to send message');
     } finally {
@@ -325,6 +373,10 @@ export default function SendMessagePage() {
     setIsScheduled(false);
     setScheduledDateTime('');
     setButtons([]);
+    setSendResult(null);
+    if (typeof window !== 'undefined') {
+      window.localStorage.removeItem(LAST_MESSAGE_STORAGE_KEY);
+    }
   };
 
   const addButton = () => {

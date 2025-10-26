@@ -1,18 +1,13 @@
-import { NextResponse } from 'next/server';
 import { getRecentBookings } from '@/lib/queries';
+import { createApiHandler, httpError } from '@/lib/apiHandler';
 
-export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const limit = searchParams.get('limit');
+export const GET = createApiHandler(async (request) => {
+  const limitParam = request.nextUrl.searchParams.get('limit');
+  const limit = limitParam ? parseInt(limitParam, 10) : 20;
 
-  try {
-    const bookings = await getRecentBookings(limit ? parseInt(limit) : 20);
-    return NextResponse.json(bookings);
-  } catch (error) {
-    console.error('Error fetching bookings:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch bookings' },
-      { status: 500 }
-    );
+  if (Number.isNaN(limit) || limit <= 0 || limit > 200) {
+    throw httpError(400, 'limit must be a positive integer <= 200');
   }
-}
+
+  return getRecentBookings(limit);
+}, { logLabel: 'bookings' });

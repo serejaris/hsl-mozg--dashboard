@@ -1,69 +1,41 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import FreeLessonsTable from '@/components/FreeLessonsTable';
 import MetricCard from '@/components/MetricCard';
 import HotLeads from '@/components/HotLeads';
 import RegistrationTrendChart from '@/components/RegistrationTrendChart';
 import UnifiedLessonBreakdown from '@/components/UnifiedLessonBreakdown';
-import { GraduationCap, Users, RefreshCw } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-
-
-interface FreeLessonRegistration {
-  id: number;
-  user_id: number;
-  username: string;
-  first_name: string;
-  email: string;
-  registered_at: string;
-  notification_sent: boolean;
-  lesson_type: string;
-  lesson_date: string;
-}
-
-interface LessonConversionStats {
-  lesson_type: string;
-  registrations: number;
-  attendances: number;
-  conversion_rate: number;
-}
+import PageHeader from '@/components/PageHeader';
+import { GraduationCap, Users } from 'lucide-react';
+import type { FreeLessonRegistration, LessonConversionStats } from '@/lib/types';
+import { useRefreshableData } from '@/hooks/useRefreshableData';
 
 export default function FreeLessonsPage() {
   const [registrations, setRegistrations] = useState<FreeLessonRegistration[]>([]);
   const [conversionData, setConversionData] = useState<LessonConversionStats[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchData = async () => {
-    try {
-      setLoading(true);
-      const [registrationsResponse, conversionResponse] = await Promise.all([
-        fetch('/api/free-lessons?limit=100'),
-        fetch('/api/free-lessons-conversion')
-      ]);
-      
-      if (!registrationsResponse.ok || !conversionResponse.ok) {
-        throw new Error('Failed to fetch free lessons data');
-      }
-
-      const registrationsData = await registrationsResponse.json();
-      const conversionDataResponse = await conversionResponse.json();
-      
-      setRegistrations(registrationsData);
-      setConversionData(conversionDataResponse);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-    } finally {
-      setLoading(false);
+  const { refresh, isRefreshing, lastUpdated, error } = useRefreshableData(async () => {
+    const [registrationsResponse, conversionResponse] = await Promise.all([
+      fetch('/api/free-lessons?limit=100'),
+      fetch('/api/free-lessons-conversion')
+    ]);
+    
+    if (!registrationsResponse.ok || !conversionResponse.ok) {
+      throw new Error('Failed to fetch free lessons data');
     }
-  };
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+    const [registrationsData, conversionDataResponse] = await Promise.all([
+      registrationsResponse.json(),
+      conversionResponse.json()
+    ]);
+    
+    setRegistrations(registrationsData);
+    setConversionData(conversionDataResponse);
+  });
 
-  if (loading && registrations.length === 0) {
+  const isInitialLoading = !lastUpdated && isRefreshing;
+
+  if (isInitialLoading && registrations.length === 0) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-muted-foreground">Загрузка данных бесплатных уроков...</div>
@@ -85,22 +57,12 @@ export default function FreeLessonsPage() {
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-foreground">Регистрации на бесплатные уроки</h1>
-        <div className="flex items-center gap-4">
-          <div className="text-sm text-muted-foreground">
-            Обновлено: {new Date().toLocaleTimeString('ru-RU')}
-          </div>
-          <Button
-            onClick={fetchData}
-            disabled={loading}
-            size="sm"
-          >
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-            Обновить
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        title="Регистрации на бесплатные уроки"
+        lastUpdated={lastUpdated}
+        onRefresh={refresh}
+        isRefreshing={isRefreshing}
+      />
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         <MetricCard

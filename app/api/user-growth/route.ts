@@ -1,18 +1,13 @@
-import { NextResponse } from 'next/server';
 import { getUserGrowthData } from '@/lib/queries';
+import { createApiHandler, httpError } from '@/lib/apiHandler';
 
-export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const days = searchParams.get('days');
+export const GET = createApiHandler(async (request) => {
+  const daysParam = request.nextUrl.searchParams.get('days');
+  const days = daysParam ? parseInt(daysParam, 10) : 30;
 
-  try {
-    const userGrowthData = await getUserGrowthData(days ? parseInt(days) : 30);
-    return NextResponse.json(userGrowthData);
-  } catch (error) {
-    console.error('Error fetching user growth data:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch user growth data' },
-      { status: 500 }
-    );
+  if (Number.isNaN(days) || days < 1 || days > 365) {
+    throw httpError(400, 'days must be between 1 and 365');
   }
-}
+
+  return getUserGrowthData(days);
+}, { logLabel: 'user-growth' });

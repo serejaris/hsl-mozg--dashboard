@@ -6,25 +6,8 @@ import MessagesNavigation from '@/components/MessagesNavigation';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-
-
-interface MessageHistory {
-  id: number;
-  message_text: string;
-  sent_at: string;
-  total_recipients: number;
-  successful_deliveries: number;
-  recipient_type: 'individual' | 'group';
-  recipient_group: string | null;
-}
-
-interface MessageRecipient {
-  id: number;
-  message_id: number;
-  user_id: number;
-  username: string | null;
-  delivery_status: string;
-}
+import type { MessageHistory, MessageRecipient } from '@/lib/types';
+import { formatDateTime } from '@/lib/date';
 
 export default function MessageHistoryPage() {
   const [messages, setMessages] = useState<MessageHistory[]>([]);
@@ -89,16 +72,6 @@ export default function MessageHistoryPage() {
   const handleMessageClick = (message: MessageHistory) => {
     setSelectedMessage(message);
     fetchRecipients(message.id);
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString('ru-RU', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
   };
 
   const truncateText = (text: string, maxLength: number = 100) => {
@@ -208,7 +181,7 @@ export default function MessageHistoryPage() {
                         <div className="flex justify-between items-start mb-2">
                           <div className="text-sm text-muted-foreground flex items-center">
                             <Clock className="mr-1" size={14} />
-                            {formatDate(message.sent_at)}
+                            {formatDateTime(message.sent_at)}
                           </div>
                           <div className="flex items-center space-x-2 text-xs">
                             <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
@@ -251,7 +224,7 @@ export default function MessageHistoryPage() {
                   <div>
                     <div className="p-4 border-b border-border bg-muted/50">
                       <div className="text-sm text-muted-foreground mb-2">
-                        Отправлено: {formatDate(selectedMessage.sent_at)}
+                        Отправлено: {formatDateTime(selectedMessage.sent_at)}
                       </div>
                       <div className="text-sm text-foreground whitespace-pre-wrap">
                         {selectedMessage.message_text}

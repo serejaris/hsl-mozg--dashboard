@@ -6,17 +6,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-
-interface UserBookingInfo {
-  id: number;
-  user_id: number;
-  course_id: number;
-  course_stream: string | null;
-  confirmed: number;
-  created_at: string;
-  referral_code: string | null;
-  discount_percent: number | null;
-}
+import { getCourseName } from '@/lib/constants';
+import type { UserBookingInfo } from '@/lib/types';
+import StatusBadge from '@/components/StatusBadge';
+import StreamBadge from '@/components/StreamBadge';
+import { formatDate, formatDateTime } from '@/lib/date';
 
 interface UserBookingsTableProps {
   bookings: UserBookingInfo[];
@@ -26,79 +20,12 @@ interface UserBookingsTableProps {
 export default function UserBookingsTable({ bookings, onUpdate }: UserBookingsTableProps) {
   const [selectedBooking, setSelectedBooking] = useState<number | null>(null);
 
-  const getStatusBadge = (confirmed: number) => {
-    switch (confirmed) {
-      case 2:
-        return (
-          <Badge variant="default" className="bg-green-100 text-green-800 hover:bg-green-200">
-            Подтверждено
-          </Badge>
-        );
-      case 1:
-        return (
-          <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 hover:bg-yellow-200">
-            В ожидании
-          </Badge>
-        );
-      case -1:
-        return (
-          <Badge variant="destructive">
-            Отменено
-          </Badge>
-        );
-      default:
-        return (
-          <Badge variant="outline">
-            Неизвестно
-          </Badge>
-        );
-    }
-  };
-
-  const getStreamBadge = (stream: string | null) => {
-    if (!stream) return <Badge variant="outline">—</Badge>;
-    
-    const streamNames: { [key: string]: string } = {
-      '3rd_stream': '3-й поток',
-      '4th_stream': '4-й поток',
-      '5th_stream': '5-й поток'
-    };
-
-    return (
-      <Badge variant="secondary">
-        {streamNames[stream] || stream}
-      </Badge>
-    );
-  };
-
   const getCourseNameBadge = (courseId: number) => {
-    const courseNames: { [key: number]: string } = {
-      1: 'Вайб кодинг'
-    };
-
     return (
       <Badge variant="outline">
-        {courseNames[courseId] || `Курс #${courseId}`}
+        {getCourseName(courseId)}
       </Badge>
     );
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('ru-RU', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
-  const formatShortDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('ru-RU', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
   };
 
   return (
@@ -148,10 +75,10 @@ export default function UserBookingsTable({ bookings, onUpdate }: UserBookingsTa
                       {getCourseNameBadge(booking.course_id)}
                     </TableCell>
                     <TableCell>
-                      {getStreamBadge(booking.course_stream)}
+                      <StreamBadge stream={booking.course_stream} />
                     </TableCell>
                     <TableCell>
-                      {getStatusBadge(booking.confirmed)}
+                      <StatusBadge status={booking.confirmed} />
                     </TableCell>
                     <TableCell>
                       {booking.discount_percent ? (
@@ -180,7 +107,7 @@ export default function UserBookingsTable({ bookings, onUpdate }: UserBookingsTa
                     <TableCell>
                       <div className="flex items-center text-sm">
                         <Calendar className="h-3 w-3 mr-1 text-muted-foreground" />
-                        <span>{formatShortDate(booking.created_at)}</span>
+                        <span>{formatDate(booking.created_at)}</span>
                       </div>
                     </TableCell>
                     <TableCell>
@@ -210,7 +137,7 @@ export default function UserBookingsTable({ bookings, onUpdate }: UserBookingsTa
                   <CardContent className="p-4">
                     <div className="flex justify-between items-start mb-2">
                       <h4 className="font-medium">Бронирование #{booking.id}</h4>
-                      {getStatusBadge(booking.confirmed)}
+                      <StatusBadge status={booking.confirmed} />
                     </div>
                     
                     <div className="space-y-2 text-sm">
@@ -221,7 +148,9 @@ export default function UserBookingsTable({ bookings, onUpdate }: UserBookingsTa
                       
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Поток:</span>
-                        <span>{getStreamBadge(booking.course_stream)}</span>
+                        <span>
+                          <StreamBadge stream={booking.course_stream} />
+                        </span>
                       </div>
                       
                       {booking.discount_percent && (
@@ -244,7 +173,7 @@ export default function UserBookingsTable({ bookings, onUpdate }: UserBookingsTa
                       
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Создано:</span>
-                        <span>{formatDate(booking.created_at)}</span>
+                        <span>{formatDateTime(booking.created_at)}</span>
                       </div>
                     </div>
                   </CardContent>

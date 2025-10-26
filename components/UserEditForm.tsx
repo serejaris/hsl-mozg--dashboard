@@ -9,29 +9,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-
-interface UserDetailInfo {
-  user_id: number;
-  username: string | null;
-  first_name: string | null;
-  last_activity?: string;
-  total_bookings: number;
-  total_events: number;
-  total_free_lessons: number;
-  latest_stream: string | null;
-  latest_payment_status: number | null;
-}
-
-interface UserBookingInfo {
-  id: number;
-  user_id: number;
-  course_id: number;
-  course_stream: string | null;
-  confirmed: number;
-  created_at: string;
-  referral_code: string | null;
-  discount_percent: number | null;
-}
+import { getStreamName, getBookingStatusLabel } from '@/lib/constants';
+import { formatDateTime } from '@/lib/date';
+import type { UserBookingInfo, UserDetailInfo } from '@/lib/types';
 
 interface UserEditFormProps {
   user: UserDetailInfo;
@@ -145,38 +125,6 @@ export default function UserEditForm({ user, bookings, onUpdate }: UserEditFormP
     }
   };
 
-  const getStatusLabel = (confirmed: number) => {
-    switch (confirmed) {
-      case 2:
-        return 'Подтверждено';
-      case 1:
-        return 'В ожидании';
-      case -1:
-        return 'Отменено';
-      default:
-        return 'Неизвестно';
-    }
-  };
-
-  const getStreamName = (stream: string) => {
-    const streamNames: { [key: string]: string } = {
-      '3rd_stream': '3-й поток',
-      '4th_stream': '4-й поток',
-      '5th_stream': '5-й поток'
-    };
-    return streamNames[stream] || stream;
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('ru-RU', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
   return (
     <div className="space-y-6">
       {/* User Info (Read-only) */}
@@ -200,7 +148,7 @@ export default function UserEditForm({ user, bookings, onUpdate }: UserEditFormP
             </div>
             <div>
               <Label className="text-muted-foreground">Последняя активность</Label>
-              <p>{user.last_activity ? formatDate(user.last_activity) : '—'}</p>
+              <p>{user.last_activity ? formatDateTime(user.last_activity) : '—'}</p>
             </div>
           </div>
         </CardContent>
@@ -231,16 +179,16 @@ export default function UserEditForm({ user, bookings, onUpdate }: UserEditFormP
                       <div className="flex items-center gap-2">
                         <span>#{booking.id}</span>
                         <Badge variant="outline">
-                          {getStreamName(booking.course_stream || 'Не указан')}
+                          {getStreamName(booking.course_stream || '') || 'Не указан'}
                         </Badge>
                         <Badge 
                           variant={booking.confirmed === 2 ? 'default' : 
                                    booking.confirmed === 1 ? 'secondary' : 'destructive'}
                         >
-                          {getStatusLabel(booking.confirmed)}
+                          {getBookingStatusLabel(booking.confirmed)}
                         </Badge>
                         <span className="text-muted-foreground text-xs">
-                          {formatDate(booking.created_at)}
+                          {formatDateTime(booking.created_at)}
                         </span>
                       </div>
                     </SelectItem>

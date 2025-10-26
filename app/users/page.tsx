@@ -3,25 +3,18 @@
 import { useState, useEffect } from 'react';
 import { Search, RefreshCw, Users as UsersIcon, Filter, Eye, Edit } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import UserDetailsDialog from '@/components/UserDetailsDialog';
 import StreamChangeDialog from '@/components/StreamChangeDialog';
-
-interface UserDetailInfo {
-  user_id: number;
-  username: string | null;
-  first_name: string | null;
-  last_activity?: string;
-  total_bookings: number;
-  total_events: number;
-  total_free_lessons: number;
-  latest_stream: string | null;
-  latest_payment_status: number | null;
-}
+import StatusBadge from '@/components/StatusBadge';
+import StreamBadge from '@/components/StreamBadge';
+import type { UserDetailInfo } from '@/lib/types';
+import { formatDate } from '@/lib/date';
+import type { UserDetailInfo } from '@/lib/types';
 
 interface UsersResponse {
   success: boolean;
@@ -136,64 +129,6 @@ export default function UsersPage() {
     setTimeout(() => setSuccessMessage(null), 3000);
     // Refresh the current page to show the updated stream
     fetchUsers(currentPage);
-  };
-
-  const getStatusBadge = (confirmed: number | null) => {
-    if (confirmed === null) {
-      return <Badge variant="outline">Нет бронирований</Badge>;
-    }
-    
-    switch (confirmed) {
-      case 2:
-        return (
-          <Badge variant="default" className="bg-green-100 text-green-800 hover:bg-green-200">
-            Подтверждено
-          </Badge>
-        );
-      case 1:
-        return (
-          <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 hover:bg-yellow-200">
-            В ожидании
-          </Badge>
-        );
-      case -1:
-        return (
-          <Badge variant="destructive">
-            Отменено
-          </Badge>
-        );
-      default:
-        return (
-          <Badge variant="outline">
-            Неизвестно
-          </Badge>
-        );
-    }
-  };
-
-  const getStreamBadge = (stream: string | null) => {
-    if (!stream) return <Badge variant="outline">—</Badge>;
-    
-    const streamNames: { [key: string]: string } = {
-      '3rd_stream': '3-й поток',
-      '4th_stream': '4-й поток',
-      '5th_stream': '5-й поток'
-    };
-
-    return (
-      <Badge variant="secondary">
-        {streamNames[stream] || stream}
-      </Badge>
-    );
-  };
-
-  const formatDate = (dateString?: string) => {
-    if (!dateString) return '—';
-    return new Date(dateString).toLocaleDateString('ru-RU', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    });
   };
 
   const formatUserName = (user: UserDetailInfo) => {
@@ -338,7 +273,7 @@ export default function UsersPage() {
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
-                            {getStreamBadge(user.latest_stream)}
+                            <StreamBadge stream={user.latest_stream} />
                             <Button
                               variant="ghost"
                               size="sm"
@@ -350,7 +285,10 @@ export default function UsersPage() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          {getStatusBadge(user.latest_payment_status)}
+                          <StatusBadge
+                            status={user.latest_payment_status}
+                            fallback={<Badge variant="outline">Нет бронирований</Badge>}
+                          />
                         </TableCell>
                         <TableCell>
                           <div className="text-sm space-y-1">
@@ -360,7 +298,7 @@ export default function UsersPage() {
                           </div>
                         </TableCell>
                         <TableCell className="text-sm text-muted-foreground">
-                          {formatDate(user.last_activity)}
+                          {user.last_activity ? formatDate(user.last_activity) : '—'}
                         </TableCell>
                         <TableCell>
                           <Button

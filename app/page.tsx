@@ -10,42 +10,13 @@ import RecentEventsTable from '@/components/RecentEventsTable';
 import { Users, GraduationCap, RefreshCw, Calendar, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { RecentEvent } from '@/lib/queries';
-
-interface DashboardStats {
-  totalUsers: number;
-  activeBookings: number;
-  confirmedPayments: number;
-  freeLessonRegistrations: number;
-}
-
-interface UserGrowthData {
-  date: string;
-  totalUsers: number;
-  newUsers: number;
-}
-
-interface CourseStreamStats {
-  courseId: number;
-  courseName: string;
-  courseStream: string;
-  total: number;
-  confirmed: number;
-  pending: number;
-  cancelled: number;
-}
-
-interface FreeLessonRegistration {
-  id: number;
-  user_id: number;
-  username: string;
-  first_name: string;
-  email: string;
-  registered_at: string;
-  notification_sent: boolean;
-  lesson_type: string;
-  lesson_date: string;
-}
+import type {
+  CourseStreamStats,
+  DashboardStats,
+  FreeLessonRegistration,
+  RecentEvent,
+  UserGrowthData
+} from '@/lib/types';
 
 export default function Home() {
   // Tier 1 - Critical data

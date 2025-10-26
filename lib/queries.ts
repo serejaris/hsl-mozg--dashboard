@@ -1,108 +1,30 @@
 import pool from './db';
-
-export interface DashboardStats {
-  totalUsers: number;
-  activeBookings: number;
-  confirmedPayments: number;
-  freeLessonRegistrations: number;
-}
-
-export interface CourseStats {
-  courseId: number;
-  courseName: string;
-  total: number;
-  confirmed: number;
-  pending: number;
-  cancelled: number;
-}
-
-export interface CourseStreamStats {
-  courseId: number;
-  courseName: string;
-  courseStream: string;
-  total: number;
-  confirmed: number;
-  pending: number;
-  cancelled: number;
-}
-
-export interface EventStats {
-  eventType: string;
-  count: number;
-}
-
-export interface FreeLessonRegistration {
-  id: number;
-  user_id: number;
-  username: string;
-  first_name: string;
-  email: string;
-  registered_at: string;
-  notification_sent: boolean;
-  lesson_type: string;
-  lesson_date: string;
-}
-
-export interface DailyStats {
-  date: string;
-  newUsers: number;
-  bookings: number;
-  events: number;
-}
-
-export interface UserGrowthData {
-  date: string;
-  totalUsers: number;
-  newUsers: number;
-}
-
-export interface LessonConversionStats {
-  lesson_type: string;
-  registrations: number;
-  attendances: number;
-  conversion_rate: number;
-}
-
-export interface RecentEvent {
-  id: number;
-  user_id: number;
-  username: string | null;
-  first_name: string | null;
-  event_type: string;
-  created_at: string;
-  details: any;
-}
-
-// Message-related interfaces
-export interface TelegramUser {
-  user_id: number;
-  username: string | null;
-  first_name: string | null;
-  course_stream?: string | null;
-}
-
-export interface MessageHistory {
-  id: number;
-  message_text: string;
-  sent_at: string;
-  total_recipients: number;
-  successful_deliveries: number;
-  recipient_type: 'individual' | 'group';
-  recipient_group: string | null;
-}
-
-export interface MessageRecipient {
-  id: number;
-  message_id: number;
-  user_id: number;
-  username: string | null;
-  delivery_status: string;
-}
+import { withClient } from './db-utils';
+import { getCourseName, getStreamName } from './constants';
+import type {
+  AuditLogEntry,
+  BookingRecord,
+  CourseStats,
+  CourseStreamStats,
+  DailyStats,
+  DashboardStats,
+  EventStats,
+  FreeLessonRegistration,
+  LessonConversionStats,
+  MessageHistory,
+  MessageRecipient,
+  RecentEvent,
+  TelegramUser,
+  UserBookingInfo,
+  UserDetailInfo,
+  UserEventInfo,
+  UserFreeLessonInfo,
+  UserGrowthData
+} from './types';
 
 // Get overall dashboard statistics
 export async function getDashboardStats(): Promise<DashboardStats> {
-  const client = await pool.connect();
-  try {
+  return withClient(async (client) => {
     // Total unique users
     const usersResult = await client.query(`
       SELECT COUNT(DISTINCT user_id) as count FROM (
@@ -135,15 +57,12 @@ export async function getDashboardStats(): Promise<DashboardStats> {
       confirmedPayments: parseInt(confirmedPaymentsResult.rows[0]?.count || '0'),
       freeLessonRegistrations: parseInt(freeLessonResult.rows[0]?.count || '0')
     };
-  } finally {
-    client.release();
-  }
+  });
 }
 
 // Get statistics by course
 export async function getCourseStats(): Promise<CourseStats[]> {
-  const client = await pool.connect();
-  try {
+  return withClient(async (client) => {
     const result = await client.query(`
       SELECT 
         course_id,
@@ -157,28 +76,20 @@ export async function getCourseStats(): Promise<CourseStats[]> {
       ORDER BY course_id
     `);
 
-    // Map course IDs to names (only show active courses)
-    const courseNames: { [key: number]: string } = {
-      1: 'Вайб кодинг'
-    };
-
     return result.rows.map(row => ({
       courseId: row.course_id,
-      courseName: courseNames[row.course_id] || `Course ${row.course_id}`,
+      courseName: getCourseName(row.course_id),
       total: parseInt(row.total),
       confirmed: parseInt(row.confirmed),
       pending: parseInt(row.pending),
       cancelled: parseInt(row.cancelled)
     }));
-  } finally {
-    client.release();
-  }
+  });
 }
 
 // Get detailed statistics by course and stream
 export async function getCourseStreamStats(): Promise<CourseStreamStats[]> {
-  const client = await pool.connect();
-  try {
+  return withClient(async (client) => {
     const result = await client.query(`
       SELECT 
         course_id,
@@ -193,35 +104,21 @@ export async function getCourseStreamStats(): Promise<CourseStreamStats[]> {
       ORDER BY course_id, course_stream
     `);
 
-    // Map course IDs to names and streams to readable names
-    const courseNames: { [key: number]: string } = {
-      1: 'Вайб кодинг'
-    };
-
-    const streamNames: { [key: string]: string } = {
-      '3rd_stream': '3-й поток',
-      '4th_stream': '4-й поток',
-      '5th_stream': '5-й поток'
-    };
-
     return result.rows.map(row => ({
       courseId: row.course_id,
-      courseName: courseNames[row.course_id] || `Course ${row.course_id}`,
-      courseStream: streamNames[row.course_stream] || row.course_stream,
+      courseName: getCourseName(row.course_id),
+      courseStream: getStreamName(row.course_stream),
       total: parseInt(row.total),
       confirmed: parseInt(row.confirmed),
       pending: parseInt(row.pending),
       cancelled: parseInt(row.cancelled)
     }));
-  } finally {
-    client.release();
-  }
+  });
 }
 
 // Get top events
 export async function getTopEvents(limit: number = 10): Promise<EventStats[]> {
-  const client = await pool.connect();
-  try {
+  return withClient(async (client) => {
     const result = await client.query(`
       SELECT 
         event_type,
@@ -236,15 +133,12 @@ export async function getTopEvents(limit: number = 10): Promise<EventStats[]> {
       eventType: row.event_type,
       count: parseInt(row.count)
     }));
-  } finally {
-    client.release();
-  }
+  });
 }
 
 // Get daily statistics for the last N days
 export async function getDailyStats(days: number = 30): Promise<DailyStats[]> {
-  const client = await pool.connect();
-  try {
+  return withClient(async (client) => {
     const result = await client.query(`
       WITH date_series AS (
         SELECT generate_series(
@@ -287,15 +181,12 @@ export async function getDailyStats(days: number = 30): Promise<DailyStats[]> {
       bookings: parseInt(row.bookings),
       events: parseInt(row.events)
     }));
-  } finally {
-    client.release();
-  }
+  });
 }
 
 // Get recent bookings
-export async function getRecentBookings(limit: number = 20) {
-  const client = await pool.connect();
-  try {
+export async function getRecentBookings(limit: number = 20): Promise<BookingRecord[]> {
+  return withClient(async (client) => {
     const result = await client.query(`
       SELECT 
         id,
@@ -313,16 +204,13 @@ export async function getRecentBookings(limit: number = 20) {
       LIMIT $1
     `, [limit]);
 
-    return result.rows;
-  } finally {
-    client.release();
-  }
+    return result.rows as BookingRecord[];
+  });
 }
 
 // Get recent events with user details
 export async function getRecentEvents(limit: number = 30): Promise<RecentEvent[]> {
-  const client = await pool.connect();
-  try {
+  return withClient(async (client) => {
     const result = await client.query(`
       WITH ranked_events AS (
         SELECT 
@@ -362,9 +250,7 @@ export async function getRecentEvents(limit: number = 30): Promise<RecentEvent[]
       created_at: row.created_at,
       details: row.details
     }));
-  } finally {
-    client.release();
-  }
+  });
 }
 
 // Get referral statistics
@@ -392,8 +278,7 @@ export async function getReferralStats() {
 
 // Get free lesson registrations with details
 export async function getFreeLessonRegistrations(limit: number = 50): Promise<FreeLessonRegistration[]> {
-  const client = await pool.connect();
-  try {
+  return withClient(async (client) => {
     const result = await client.query(`
       SELECT 
         id,
@@ -421,15 +306,12 @@ export async function getFreeLessonRegistrations(limit: number = 50): Promise<Fr
       lesson_type: row.lesson_type || 'Unknown',
       lesson_date: row.lesson_date ? row.lesson_date.toISOString().split('T')[0] : 'N/A'
     }));
-  } finally {
-    client.release();
-  }
+  });
 }
 
 // Get lesson conversion statistics
 export async function getLessonConversion(): Promise<LessonConversionStats[]> {
-  const client = await pool.connect();
-  try {
+  return withClient(async (client) => {
     const result = await client.query(`
       WITH registrations AS (
         SELECT 
@@ -466,15 +348,12 @@ export async function getLessonConversion(): Promise<LessonConversionStats[]> {
       attendances: parseInt(row.attendances),
       conversion_rate: parseFloat(row.conversion_rate)
     }));
-  } finally {
-    client.release();
-  }
+  });
 }
 
 // Get user growth data for the last N days
 export async function getUserGrowthData(days: number = 30): Promise<UserGrowthData[]> {
-  const client = await pool.connect();
-  try {
+  return withClient(async (client) => {
     const result = await client.query(`
       WITH date_series AS (
         SELECT generate_series(
@@ -534,17 +413,14 @@ export async function getUserGrowthData(days: number = 30): Promise<UserGrowthDa
       totalUsers: parseInt(row.total_users),
       newUsers: parseInt(row.new_users)
     }));
-  } finally {
-    client.release();
-  }
+  });
 }
 
 // Message-related functions
 
 // Get all users from bookings and free lesson registrations for caching
 export async function getAllUsers(): Promise<TelegramUser[]> {
-  const client = await pool.connect();
-  try {
+  return withClient(async (client) => {
     const result = await client.query(`
       SELECT DISTINCT ON (user_id) user_id, username, first_name
       FROM (
@@ -568,21 +444,18 @@ export async function getAllUsers(): Promise<TelegramUser[]> {
       username: row.username,
       first_name: row.first_name
     }));
-  } finally {
-    client.release();
-  }
+  });
 }
 
 // Get users by course stream for group messaging
 export async function getUsersByStream(courseStream: string): Promise<TelegramUser[]> {
-  const client = await pool.connect();
-  try {
+  return withClient(async (client) => {
     const result = await client.query(`
       SELECT DISTINCT b.user_id, b.username, b.first_name, b.course_stream
       FROM bookings b
       WHERE b.course_stream = $1 
         AND b.user_id IS NOT NULL
-        AND b.confirmed != -1
+        AND b.confirmed = 2
       ORDER BY b.user_id, b.username, b.first_name
     `, [courseStream]);
 
@@ -594,9 +467,46 @@ export async function getUsersByStream(courseStream: string): Promise<TelegramUs
       first_name: row.first_name,
       course_stream: row.course_stream
     }));
-  } finally {
-    client.release();
-  }
+  });
+}
+
+// Get all users except those who have paid for courses
+export async function getUsersExceptCourseAttendees(): Promise<TelegramUser[]> {
+  return withClient(async (client) => {
+    const result = await client.query(`
+      SELECT DISTINCT ON (user_id) user_id, username, first_name
+      FROM (
+        SELECT user_id, username, first_name
+        FROM events
+        WHERE user_id IS NOT NULL
+        UNION
+        SELECT user_id, username, first_name
+        FROM free_lesson_registrations
+        WHERE user_id IS NOT NULL
+        UNION
+        SELECT user_id, username, first_name
+        FROM bookings
+        WHERE user_id IS NOT NULL
+      ) AS all_users
+      WHERE user_id NOT IN (
+        SELECT DISTINCT user_id
+        FROM bookings
+        WHERE confirmed = 2
+          AND user_id IS NOT NULL
+      )
+      ORDER BY user_id,
+               CASE WHEN username IS NOT NULL AND username != '' THEN 1 ELSE 2 END,
+               CASE WHEN first_name IS NOT NULL AND first_name != '' THEN 1 ELSE 2 END
+    `);
+
+    console.log(`📊 getUsersExceptCourseAttendees: Found ${result.rows.length} users who haven't paid for courses`);
+
+    return result.rows.map(row => ({
+      user_id: row.user_id,
+      username: row.username,
+      first_name: row.first_name
+    }));
+  });
 }
 
 // Search users from bookings and free lesson registrations
@@ -713,8 +623,7 @@ export async function getMessageHistory(
   recipientType?: 'individual' | 'group',
   recipientGroup?: string
 ): Promise<MessageHistory[]> {
-  const client = await pool.connect();
-  try {
+  return withClient(async (client) => {
     let query = `
       SELECT id, message_text, sent_at, total_recipients, successful_deliveries, recipient_type, recipient_group
       FROM message_history
@@ -748,15 +657,12 @@ export async function getMessageHistory(
       recipient_type: row.recipient_type || 'individual',
       recipient_group: row.recipient_group
     }));
-  } finally {
-    client.release();
-  }
+  });
 }
 
 // Get message recipients with delivery status
 export async function getMessageRecipients(messageId: number): Promise<MessageRecipient[]> {
-  const client = await pool.connect();
-  try {
+  return withClient(async (client) => {
     const result = await client.query(`
       SELECT id, message_id, user_id, username, delivery_status
       FROM message_recipients
@@ -771,9 +677,7 @@ export async function getMessageRecipients(messageId: number): Promise<MessageRe
       username: row.username,
       delivery_status: row.delivery_status
     }));
-  } finally {
-    client.release();
-  }
+  });
 }
 
 // Validate user IDs exist in database
@@ -789,15 +693,19 @@ export async function validateUserIds(userIds: (number | string)[]): Promise<{
     const result = await client.query(`
       SELECT DISTINCT ON (user_id) user_id, username, first_name
       FROM (
-        SELECT user_id, username, first_name 
-        FROM bookings 
+        SELECT user_id, username, first_name
+        FROM bookings
         WHERE user_id = ANY($1)
         UNION
-        SELECT user_id, username, first_name 
-        FROM free_lesson_registrations 
+        SELECT user_id, username, first_name
+        FROM free_lesson_registrations
+        WHERE user_id = ANY($1)
+        UNION
+        SELECT user_id, username, first_name
+        FROM events
         WHERE user_id = ANY($1)
       ) AS users
-      ORDER BY user_id, 
+      ORDER BY user_id,
                CASE WHEN username IS NOT NULL AND username != '' THEN 1 ELSE 2 END,
                CASE WHEN first_name IS NOT NULL AND first_name != '' THEN 1 ELSE 2 END
     `, [normalizedUserIds]);
@@ -852,18 +760,6 @@ export async function validateUserIds(userIds: (number | string)[]): Promise<{
   } finally {
     client.release();
   }
-}
-
-// Comprehensive audit logging interface
-export interface AuditLogEntry {
-  id: number;
-  action_type: string;
-  user_count: number;
-  message_preview: string;
-  test_mode: boolean;
-  success: boolean;
-  created_at: string;
-  details: string;
 }
 
 // Delete a Telegram message for a specific recipient
@@ -957,48 +853,6 @@ export async function createAuditLogEntry(
   }
 }
 
-// User Management Functions
-
-export interface UserDetailInfo {
-  user_id: number;
-  username: string | null;
-  first_name: string | null;
-  last_activity?: string;
-  total_bookings: number;
-  total_events: number;
-  total_free_lessons: number;
-  latest_stream: string | null;
-  latest_payment_status: number | null;
-}
-
-export interface UserBookingInfo {
-  id: number;
-  user_id: number;
-  course_id: number;
-  course_stream: string | null;
-  confirmed: number;
-  created_at: string;
-  referral_code: string | null;
-  discount_percent: number | null;
-}
-
-export interface UserEventInfo {
-  id: number;
-  event_type: string;
-  created_at: string;
-  details: any;
-}
-
-export interface UserFreeLessonInfo {
-  id: number;
-  user_id: number;
-  email: string | null;
-  registered_at: string;
-  notification_sent: boolean;
-  lesson_type: string | null;
-  lesson_date: string | null;
-}
-
 // Get paginated list of users with basic info
 export async function getUsers(
   limit: number = 50, 
@@ -1007,8 +861,7 @@ export async function getUsers(
   streamFilter?: string,
   statusFilter?: number
 ): Promise<{users: UserDetailInfo[], total: number}> {
-  const client = await pool.connect();
-  try {
+  return withClient(async (client) => {
     let whereClause = '';
     const params: any[] = [];
     let paramIndex = 1;
@@ -1145,15 +998,12 @@ export async function getUsers(
     }));
 
     return { users, total };
-  } finally {
-    client.release();
-  }
+  });
 }
 
 // Get detailed user information by ID
 export async function getUserById(userId: number): Promise<UserDetailInfo | null> {
-  const client = await pool.connect();
-  try {
+  return withClient(async (client) => {
     const result = await client.query(`
       WITH user_info AS (
         SELECT DISTINCT ON (user_id) user_id, username, first_name
@@ -1210,15 +1060,12 @@ export async function getUserById(userId: number): Promise<UserDetailInfo | null
       latest_stream: row.latest_stream,
       latest_payment_status: row.latest_payment_status
     };
-  } finally {
-    client.release();
-  }
+  });
 }
 
 // Get user's bookings
 export async function getUserBookings(userId: number): Promise<UserBookingInfo[]> {
-  const client = await pool.connect();
-  try {
+  return withClient(async (client) => {
     const result = await client.query(`
       SELECT id, user_id, course_id, course_stream, confirmed, created_at, referral_code, discount_percent
       FROM bookings
@@ -1236,15 +1083,12 @@ export async function getUserBookings(userId: number): Promise<UserBookingInfo[]
       referral_code: row.referral_code,
       discount_percent: row.discount_percent
     }));
-  } finally {
-    client.release();
-  }
+  });
 }
 
 // Get user's events
 export async function getUserEvents(userId: number, limit: number = 50): Promise<UserEventInfo[]> {
-  const client = await pool.connect();
-  try {
+  return withClient(async (client) => {
     const result = await client.query(`
       SELECT id, event_type, created_at, details
       FROM events
@@ -1259,15 +1103,12 @@ export async function getUserEvents(userId: number, limit: number = 50): Promise
       created_at: row.created_at.toISOString(),
       details: row.details
     }));
-  } finally {
-    client.release();
-  }
+  });
 }
 
 // Get user's free lesson registrations
 export async function getUserFreeLessons(userId: number): Promise<UserFreeLessonInfo[]> {
-  const client = await pool.connect();
-  try {
+  return withClient(async (client) => {
     const result = await client.query(`
       SELECT id, user_id, email, registered_at, notification_sent, lesson_type, lesson_date
       FROM free_lesson_registrations
@@ -1284,9 +1125,7 @@ export async function getUserFreeLessons(userId: number): Promise<UserFreeLesson
       lesson_type: row.lesson_type,
       lesson_date: row.lesson_date ? row.lesson_date.toISOString().split('T')[0] : null
     }));
-  } finally {
-    client.release();
-  }
+  });
 }
 
 // Update user booking

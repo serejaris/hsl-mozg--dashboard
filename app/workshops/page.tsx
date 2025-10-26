@@ -3,83 +3,44 @@
 import { useEffect, useState } from 'react';
 import BookingsTable from '@/components/BookingsTable';
 import MetricCard from '@/components/MetricCard';
-import { Calendar, Users, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import PageHeader from '@/components/PageHeader';
+import { Calendar, Users, CheckCircle, XCircle } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-
-interface CourseStats {
-  courseId: number;
-  courseName: string;
-  total: number;
-  confirmed: number;
-  pending: number;
-  cancelled: number;
-}
-
-interface CourseStreamStats {
-  courseId: number;
-  courseName: string;
-  courseStream: string;
-  total: number;
-  confirmed: number;
-  pending: number;
-  cancelled: number;
-}
-
-interface Booking {
-  id: number;
-  user_id: number;
-  username: string;
-  first_name: string;
-  course_id: number;
-  course_stream: string;
-  confirmed: number;
-  created_at: string;
-  referral_code: string;
-  discount_percent: number;
-}
+import type { BookingRecord, CourseStats, CourseStreamStats } from '@/lib/types';
+import { useRefreshableData } from '@/hooks/useRefreshableData';
 
 export default function WorkshopsPage() {
   const [courseStats, setCourseStats] = useState<CourseStats[]>([]);
   const [courseStreamStats, setCourseStreamStats] = useState<CourseStreamStats[]>([]);
-  const [bookings, setBookings] = useState<Booking[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [bookings, setBookings] = useState<BookingRecord[]>([]);
 
-  const fetchData = async () => {
-    try {
-      setLoading(true);
-      const [courseResponse, courseStreamResponse, bookingsResponse] = await Promise.all([
-        fetch('/api/courses'),
-        fetch('/api/course-streams'),
-        fetch('/api/bookings?limit=50')
-      ]);
+  const { refresh, isRefreshing, lastUpdated, error } = useRefreshableData(async () => {
+    const [courseResponse, courseStreamResponse, bookingsResponse] = await Promise.all([
+      fetch('/api/courses'),
+      fetch('/api/course-streams'),
+      fetch('/api/bookings?limit=50')
+    ]);
 
-      if (!courseResponse.ok || !courseStreamResponse.ok || !bookingsResponse.ok) {
-        throw new Error('Failed to fetch data');
-      }
-
-      const courseData = await courseResponse.json();
-      const courseStreamData = await courseStreamResponse.json();
-      const bookingsData = await bookingsResponse.json();
-
-      setCourseStats(courseData);
-      setCourseStreamStats(courseStreamData);
-      setBookings(bookingsData);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
-    } finally {
-      setLoading(false);
+    if (!courseResponse.ok || !courseStreamResponse.ok || !bookingsResponse.ok) {
+      throw new Error('Failed to fetch data');
     }
-  };
 
-  useEffect(() => {
-    fetchData();
-  }, []);
+    const [courseData, courseStreamData, bookingsData] = await Promise.all([
+      courseResponse.json(),
+      courseStreamResponse.json(),
+      bookingsResponse.json()
+    ]);
 
-  if (loading) {
+    setCourseStats(courseData);
+    setCourseStreamStats(courseStreamData);
+    setBookings(bookingsData);
+  });
+
+  const isInitialLoading = !lastUpdated && isRefreshing;
+
+  if (isInitialLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
         <div className="text-muted-foreground">Загружаем данные курсов...</div>
@@ -107,22 +68,12 @@ export default function WorkshopsPage() {
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-foreground">Аналитика курсов</h1>
-        <div className="flex items-center gap-4">
-          <div className="text-sm text-muted-foreground">
-            Обновлено: {new Date().toLocaleTimeString('ru-RU')}
-          </div>
-          <Button
-            onClick={fetchData}
-            disabled={loading}
-            size="sm"
-          >
-            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-            Обновить
-          </Button>
-        </div>
-      </div>
+      <PageHeader
+        title="Аналитика курсов"
+        lastUpdated={lastUpdated}
+        onRefresh={refresh}
+        isRefreshing={isRefreshing}
+      />
 
       {courseStreamStats.length > 0 && (
         <Card>

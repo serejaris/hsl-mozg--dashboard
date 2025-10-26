@@ -3,62 +3,16 @@
 import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-
-interface Booking {
-  id: number;
-  user_id: number;
-  username: string;
-  first_name: string;
-  course_id: number;
-  course_stream: string;
-  confirmed: number;
-  created_at: string;
-  referral_code: string;
-  discount_percent: number;
-}
+import { getCourseName } from '@/lib/constants';
+import type { BookingRecord } from '@/lib/types';
+import StatusBadge from '@/components/StatusBadge';
+import StreamBadge from '@/components/StreamBadge';
+import { formatDateTime } from '@/lib/date';
 
 interface BookingsTableProps {
-  bookings: Booking[];
+  bookings: BookingRecord[];
 }
-
-const getStatusBadge = (confirmed: number) => {
-  switch (confirmed) {
-    case 2:
-      return (
-        <Badge variant="default" className="bg-green-100 text-green-800 hover:bg-green-200">
-          Подтверждено
-        </Badge>
-      );
-    case 1:
-      return (
-        <Badge variant="secondary" className="bg-yellow-100 text-yellow-800 hover:bg-yellow-200">
-          В ожидании
-        </Badge>
-      );
-    case -1:
-      return (
-        <Badge variant="destructive">
-          Отменено
-        </Badge>
-      );
-    default:
-      return (
-        <Badge variant="outline">
-          Неизвестно
-        </Badge>
-      );
-  }
-};
-
-const getCourseNameById = (courseId: number) => {
-  const courseNames: { [key: number]: string } = {
-    1: 'Вайб кодинг',
-    2: 'Вайб кодинг EXTRA'
-  };
-  return courseNames[courseId] || `Course ${courseId}`;
-};
 
 export default function BookingsTable({ bookings }: BookingsTableProps) {
   const [filter, setFilter] = useState<'all' | 'confirmed' | 'pending' | 'cancelled'>('all');
@@ -133,22 +87,18 @@ export default function BookingsTable({ bookings }: BookingsTableProps) {
                   </TableCell>
                   <TableCell>
                     <div className="text-sm">
-                      {getCourseNameById(booking.course_id)}
+                      {getCourseName(booking.course_id)}
                     </div>
                     <div className="text-sm text-muted-foreground">
                       ID: {booking.course_id}
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge variant="secondary" className="bg-blue-100 text-blue-800">
-                      {booking.course_stream === '3rd_stream' ? '3-й поток' : 
-                       booking.course_stream === '4th_stream' ? '4-й поток' : 
-                       booking.course_stream || 'N/A'}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    {getStatusBadge(booking.confirmed)}
-                  </TableCell>
+                  <StreamBadge stream={booking.course_stream} />
+                </TableCell>
+                <TableCell>
+                  <StatusBadge status={booking.confirmed} />
+                </TableCell>
                   <TableCell>
                     {booking.discount_percent > 0 ? (
                       <div className="flex flex-col">
@@ -166,13 +116,7 @@ export default function BookingsTable({ bookings }: BookingsTableProps) {
                     )}
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
-                    {new Date(booking.created_at).toLocaleDateString('ru-RU', {
-                      day: '2-digit',
-                      month: '2-digit',
-                      year: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })}
+                    {formatDateTime(booking.created_at)}
                   </TableCell>
                 </TableRow>
               ))
