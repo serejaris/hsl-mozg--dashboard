@@ -1,3 +1,6 @@
+export type BookingStatus = -1 | 0 | 1 | 2 | null;
+export type BookingDecisionStatus = Exclude<BookingStatus, null>;
+
 export interface DashboardStats {
   totalUsers: number;
   activeBookings: number;
@@ -117,7 +120,7 @@ export interface UserDetailInfo {
   total_events: number;
   total_free_lessons: number;
   latest_stream: string | null;
-  latest_payment_status: number | null;
+  latest_payment_status: BookingStatus;
 }
 
 export interface UserBookingInfo {
@@ -125,7 +128,7 @@ export interface UserBookingInfo {
   user_id: number;
   course_id: number;
   course_stream: string | null;
-  confirmed: number;
+  confirmed: BookingDecisionStatus;
   created_at: string;
   referral_code: string | null;
   discount_percent: number | null;
@@ -155,8 +158,19 @@ export interface BookingRecord {
   first_name: string;
   course_id: number;
   course_stream: string;
-  confirmed: number;
+  confirmed: BookingDecisionStatus;
   created_at: string;
   referral_code: string;
   discount_percent: number;
+}
+
+export interface StreamStudent {
+  user_id: number;
+  username: string | null;
+  first_name: string | null;
+  confirmed: number | null;  // null = viewed only, no booking
+  created_at: string;
+  last_activity: string | null;
+  events_count: number;
+  source: 'booking' | 'viewed';
 }
