@@ -85,20 +85,19 @@ export default function WorkshopsPage() {
                 <Link
                   key={`${stream.courseId}-${stream.courseStreamRaw}`}
                   href={`/workshops/stream/${stream.courseStreamRaw}`}
+                  className="block rounded-xl border border-border/60 bg-muted/50 text-card-foreground cursor-pointer hover:border-primary hover:bg-muted transition-colors"
                 >
-                  <Card className="bg-muted/50 cursor-pointer hover:border-primary hover:bg-muted transition-colors">
-                    <CardContent className="flex justify-between items-center p-4">
-                      <div>
-                        <h3 className="font-medium">{stream.courseName}</h3>
-                        <p className="text-sm text-muted-foreground">{stream.courseStream}</p>
-                        <p className="text-xs text-muted-foreground">Подтверждено: {stream.confirmed}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-2xl font-bold text-primary">{stream.total}</p>
-                        <p className="text-xs text-muted-foreground">студентов</p>
-                      </div>
-                    </CardContent>
-                  </Card>
+                  <div className="flex justify-between items-center p-4">
+                    <div>
+                      <h3 className="font-medium">{stream.courseName}</h3>
+                      <p className="text-sm text-muted-foreground">{stream.courseStream}</p>
+                      <p className="text-xs text-muted-foreground">Подтверждено: {stream.confirmed}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-2xl font-bold text-primary">{stream.total}</p>
+                      <p className="text-xs text-muted-foreground">студентов</p>
+                    </div>
+                  </div>
                 </Link>
               ))}
             </div>
