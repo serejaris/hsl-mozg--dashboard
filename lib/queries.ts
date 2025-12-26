@@ -213,26 +213,17 @@ export async function getRecentEvents(limit: number = 30): Promise<RecentEvent[]
   return withClient(async (client) => {
     const result = await client.query(`
       WITH ranked_events AS (
-        SELECT 
+        SELECT
           e.id,
           e.user_id,
           e.event_type,
           e.created_at,
           e.details,
-          COALESCE(b.username, f.username) as username,
-          COALESCE(b.first_name, f.first_name) as first_name,
+          u.username,
+          u.first_name,
           ROW_NUMBER() OVER (PARTITION BY e.user_id ORDER BY e.created_at DESC) as rn
         FROM events e
-        LEFT JOIN (
-          SELECT DISTINCT ON (user_id) user_id, username, first_name 
-          FROM bookings 
-          WHERE username IS NOT NULL OR first_name IS NOT NULL
-        ) b ON e.user_id = b.user_id
-        LEFT JOIN (
-          SELECT DISTINCT ON (user_id) user_id, username, first_name 
-          FROM free_lesson_registrations 
-          WHERE username IS NOT NULL OR first_name IS NOT NULL
-        ) f ON e.user_id = f.user_id
+        LEFT JOIN users u ON e.user_id = u.user_id
       )
       SELECT id, user_id, event_type, created_at, details, username, first_name
       FROM ranked_events
@@ -418,26 +409,16 @@ export async function getUserGrowthData(days: number = 30): Promise<UserGrowthDa
 
 // Message-related functions
 
-// Get all users from bookings and free lesson registrations for caching
+// Get all users from users table for caching
 export async function getAllUsers(): Promise<TelegramUser[]> {
   return withClient(async (client) => {
     const result = await client.query(`
-      SELECT DISTINCT ON (user_id) user_id, username, first_name
-      FROM (
-        SELECT user_id, username, first_name 
-        FROM bookings 
-        WHERE user_id IS NOT NULL
-        UNION
-        SELECT user_id, username, first_name 
-        FROM free_lesson_registrations 
-        WHERE user_id IS NOT NULL
-      ) AS users
-      ORDER BY user_id, 
-               CASE WHEN username IS NOT NULL AND username != '' THEN 1 ELSE 2 END,
-               CASE WHEN first_name IS NOT NULL AND first_name != '' THEN 1 ELSE 2 END
+      SELECT user_id, username, first_name
+      FROM users
+      ORDER BY updated_at DESC
     `);
 
-    console.log(`📊 getAllUsers: Found ${result.rows.length} unique users (deduplicated by user_id)`);
+    console.log(`getAllUsers: Found ${result.rows.length} users from users table`);
 
     return result.rows.map(row => ({
       user_id: row.user_id,
@@ -509,26 +490,21 @@ export async function getUsersExceptCourseAttendees(): Promise<TelegramUser[]> {
   });
 }
 
-// Search users from bookings and free lesson registrations
+// Search users from users table
 export async function searchUsers(query: string): Promise<TelegramUser[]> {
   const client = await pool.connect();
   try {
     const searchPattern = `%${query.toLowerCase()}%`;
     const result = await client.query(`
-      SELECT DISTINCT user_id, username, first_name
-      FROM (
-        SELECT user_id, username, first_name 
-        FROM bookings 
-        WHERE LOWER(username) LIKE $1 OR LOWER(first_name) LIKE $1
-        UNION
-        SELECT user_id, username, first_name 
-        FROM free_lesson_registrations 
-        WHERE LOWER(username) LIKE $1 OR LOWER(first_name) LIKE $1
-      ) AS users
-      WHERE user_id IS NOT NULL
-      ORDER BY username, first_name
+      SELECT user_id, username, first_name
+      FROM users
+      WHERE LOWER(username) LIKE $1 OR LOWER(first_name) LIKE $1
+      ORDER BY
+        CASE WHEN LOWER(username) = $2 THEN 0 ELSE 1 END,
+        CASE WHEN LOWER(username) LIKE $3 THEN 0 ELSE 1 END,
+        username, first_name
       LIMIT 50
-    `, [searchPattern]);
+    `, [searchPattern, query.toLowerCase(), `${query.toLowerCase()}%`]);
 
     return result.rows.map(row => ({
       user_id: row.user_id,
@@ -687,35 +663,14 @@ export async function validateUserIds(userIds: (number | string)[]): Promise<{
 }> {
   const client = await pool.connect();
   try {
-    // Convert all userIds to numbers to ensure consistent typing
+    // Convert all userIds to numbers
     const normalizedUserIds: number[] = userIds.map(id => typeof id === 'string' ? parseInt(id) : id);
-    
-    const result = await client.query(`
-      SELECT DISTINCT ON (user_id) user_id, username, first_name
-      FROM (
-        SELECT user_id, username, first_name
-        FROM bookings
-        WHERE user_id = ANY($1)
-        UNION
-        SELECT user_id, username, first_name
-        FROM free_lesson_registrations
-        WHERE user_id = ANY($1)
-        UNION
-        SELECT user_id, username, first_name
-        FROM events
-        WHERE user_id = ANY($1)
-      ) AS users
-      ORDER BY user_id,
-               CASE WHEN username IS NOT NULL AND username != '' THEN 1 ELSE 2 END,
-               CASE WHEN first_name IS NOT NULL AND first_name != '' THEN 1 ELSE 2 END
-    `, [normalizedUserIds]);
 
-    console.log('🐛 DEBUG: Raw database results:', result.rows.map(row => ({
-      user_id_string: row.user_id,
-      user_id_type: typeof row.user_id,
-      username: row.username,
-      first_name: row.first_name
-    })));
+    const result = await client.query(`
+      SELECT user_id, username, first_name
+      FROM users
+      WHERE user_id = ANY($1)
+    `, [normalizedUserIds]);
 
     const validUsers: TelegramUser[] = result.rows.map(row => ({
       user_id: parseInt(row.user_id),
@@ -723,35 +678,10 @@ export async function validateUserIds(userIds: (number | string)[]): Promise<{
       first_name: row.first_name
     }));
 
-    console.log('🐛 DEBUG: Original userIds:', userIds.map(id => ({ 
-      id, 
-      type: typeof id,
-      string: String(id)
-    })));
-    
-    console.log('🐛 DEBUG: Normalized userIds:', normalizedUserIds.map(id => ({ 
-      id, 
-      type: typeof id,
-      string: String(id)
-    })));
-    
-    console.log('🐛 DEBUG: Converted validUsers:', validUsers.map(u => ({
-      user_id: u.user_id,
-      type: typeof u.user_id,
-      string: String(u.user_id)
-    })));
-
     const validIds = new Set(validUsers.map(u => u.user_id));
-    console.log('🐛 DEBUG: ValidIds Set:', Array.from(validIds));
-    
-    // Debug the filter logic step by step - using normalized IDs
-    const invalidIds = normalizedUserIds.filter(id => {
-      const hasId = validIds.has(id);
-      console.log(`🐛 DEBUG: Checking ${id} (${typeof id}): Set.has() = ${hasId}`);
-      return !hasId;
-    });
+    const invalidIds = normalizedUserIds.filter(id => !validIds.has(id));
 
-    console.log(`🔍 validateUserIds: Requested ${normalizedUserIds.length} user(s), found ${validUsers.length} unique valid user(s), ${invalidIds.length} invalid`);
+    console.log(`validateUserIds: Requested ${normalizedUserIds.length} user(s), found ${validUsers.length} valid, ${invalidIds.length} invalid`);
 
     return {
       valid: validUsers,
@@ -1222,3 +1152,80 @@ export async function updateUserStream(
     client.release();
   }
 }
+
+// Get hackathon registrations for messaging
+export async function getHackathonUsers(): Promise<TelegramUser[]> {
+  return withClient(async (client) => {
+    const result = await client.query(`
+      SELECT DISTINCT user_id, username, NULL as first_name
+      FROM hackathon_registrations
+      WHERE user_id IS NOT NULL
+      ORDER BY user_id
+    `);
+
+    console.log(`📊 getHackathonUsers: Found ${result.rows.length} hackathon participants`);
+
+    return result.rows.map(row => ({
+      user_id: row.user_id,
+      username: row.username,
+      first_name: row.first_name
+    }));
+  });
+}
+
+// Ensure blocked_users table exists
+export async function ensureBlockedUsersTable(): Promise<void> {
+  const client = await pool.connect();
+  try {
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS blocked_users (
+        user_id BIGINT PRIMARY KEY,
+        blocked_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+        reason TEXT DEFAULT 'bot_blocked_by_user'
+      )
+    `);
+  } finally {
+    client.release();
+  }
+}
+
+// Mark user as blocked (when they block the bot)
+export async function markUserAsBlocked(userId: number, reason: string = 'bot_blocked_by_user'): Promise<void> {
+  const client = await pool.connect();
+  try {
+    await client.query(`
+      INSERT INTO blocked_users (user_id, reason)
+      VALUES ($1, $2)
+      ON CONFLICT (user_id) DO UPDATE SET blocked_at = NOW(), reason = $2
+    `, [userId, reason]);
+    console.log(`🚫 Marked user ${userId} as blocked (${reason})`);
+  } finally {
+    client.release();
+  }
+}
+
+// Unblock a user
+export async function unblockUser(userId: number): Promise<boolean> {
+  const client = await pool.connect();
+  try {
+    const result = await client.query(`
+      DELETE FROM blocked_users WHERE user_id = $1
+    `, [userId]);
+    return (result.rowCount ?? 0) > 0;
+  } finally {
+    client.release();
+  }
+}
+
+// Get all blocked user IDs
+export async function getBlockedUserIds(): Promise<Set<number>> {
+  const client = await pool.connect();
+  try {
+    const result = await client.query(`SELECT user_id FROM blocked_users`);
+    return new Set(result.rows.map(row => parseInt(row.user_id)));
+  } finally {
+    client.release();
+  }
+}
+
+export type { TelegramUser } from './types';
