@@ -1,3 +1,5 @@
+import type { BookingStatus } from './types';
+
 export const COURSE_NAMES: Record<number, string> = {
   1: 'Вайб кодинг'
 };
@@ -5,7 +7,18 @@ export const COURSE_NAMES: Record<number, string> = {
 export const STREAM_NAMES: Record<string, string> = {
   '3rd_stream': '3-й поток',
   '4th_stream': '4-й поток',
-  '5th_stream': '5-й поток'
+  '5th_stream': '5-й поток',
+  '6th_stream': '6-й поток',
+  '7th_stream': '7-й поток',
+  '8th_stream': '8-й поток',
+  'mentoring': 'Менторинг'
+};
+
+// Current active stream config (for "viewed" status detection)
+export const CURRENT_STREAM = {
+  stream: '8th_stream',
+  courseId: 1,
+  startDate: '2024-12-01'  // Date when 8th stream enrollment started
 };
 
 export function getCourseName(courseId: number) {
@@ -16,8 +29,6 @@ export function getStreamName(stream?: string | null) {
   if (!stream) return stream ?? '';
   return STREAM_NAMES[stream] || stream;
 }
-
-type BookingStatus = -1 | 0 | 1 | 2 | null;
 
 const BOOKING_STATUS_META: Record<number, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline'; className?: string }> = {
   2: {
@@ -44,3 +55,5 @@ export function getBookingStatusMeta(status: BookingStatus) {
 export function getBookingStatusLabel(status: BookingStatus) {
   return getBookingStatusMeta(status).label;
 }
+
+export type { BookingStatus } from './types';
