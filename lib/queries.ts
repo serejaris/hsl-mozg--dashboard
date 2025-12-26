@@ -1,6 +1,6 @@
 import pool from './db';
 import { withClient } from './db-utils';
-import { getCourseName, getStreamName } from './constants';
+import { getCourseName, getStreamName, CURRENT_STREAM } from './constants';
 import type {
   AuditLogEntry,
   BookingRecord,
@@ -14,6 +14,7 @@ import type {
   MessageHistory,
   MessageRecipient,
   RecentEvent,
+  StreamStudent,
   TelegramUser,
   UserBookingInfo,
   UserDetailInfo,
@@ -434,13 +435,13 @@ export async function getUsersByStream(courseStream: string): Promise<TelegramUs
     const result = await client.query(`
       SELECT DISTINCT b.user_id, b.username, b.first_name, b.course_stream
       FROM bookings b
-      WHERE b.course_stream = $1 
+      WHERE b.course_stream = $1
         AND b.user_id IS NOT NULL
         AND b.confirmed = 2
       ORDER BY b.user_id, b.username, b.first_name
     `, [courseStream]);
 
-    console.log(`📊 getUsersByStream: Found ${result.rows.length} users for stream ${courseStream}`);
+    console.log(`getUsersByStream: Found ${result.rows.length} users for stream ${courseStream}`);
 
     return result.rows.map(row => ({
       user_id: row.user_id,
@@ -448,6 +449,92 @@ export async function getUsersByStream(courseStream: string): Promise<TelegramUs
       first_name: row.first_name,
       course_stream: row.course_stream
     }));
+  });
+}
+
+// Get all students for a stream (bookings + viewers)
+export async function getStreamStudents(courseStream: string): Promise<StreamStudent[]> {
+  return withClient(async (client) => {
+    const isCurrentStream = courseStream === CURRENT_STREAM.stream;
+
+    // Base query for bookings
+    let query = `
+      WITH booking_students AS (
+        SELECT DISTINCT ON (b.user_id)
+          b.user_id,
+          b.username,
+          b.first_name,
+          b.confirmed,
+          b.created_at,
+          (SELECT MAX(created_at) FROM events WHERE user_id = b.user_id) as last_activity,
+          (SELECT COUNT(*) FROM events WHERE user_id = b.user_id) as events_count,
+          'booking' as source
+        FROM bookings b
+        WHERE b.course_stream = $1 AND b.user_id IS NOT NULL
+        ORDER BY b.user_id, b.created_at DESC
+      )
+    `;
+
+    const params: (string | number)[] = [courseStream];
+
+    if (isCurrentStream) {
+      // Include viewers without booking for current stream
+      query += `,
+      viewer_students AS (
+        SELECT DISTINCT ON (e.user_id)
+          e.user_id,
+          e.details->>'username' as username,
+          e.details->>'first_name' as first_name,
+          NULL::integer as confirmed,
+          MIN(e.created_at) OVER (PARTITION BY e.user_id) as created_at,
+          MAX(e.created_at) OVER (PARTITION BY e.user_id) as last_activity,
+          COUNT(*) OVER (PARTITION BY e.user_id) as events_count,
+          'viewed' as source
+        FROM events e
+        WHERE e.event_type = 'view_program'
+          AND e.details->>'course_id' = $2
+          AND e.created_at >= $3
+          AND e.user_id NOT IN (SELECT user_id FROM bookings WHERE course_stream = $1)
+        ORDER BY e.user_id, e.created_at DESC
+      )
+      SELECT * FROM booking_students
+      UNION ALL
+      SELECT * FROM viewer_students
+      ORDER BY created_at DESC
+      `;
+      params.push(String(CURRENT_STREAM.courseId), CURRENT_STREAM.startDate);
+    } else {
+      query += `
+      SELECT * FROM booking_students
+      ORDER BY created_at DESC
+      `;
+    }
+
+    const result = await client.query(query, params);
+
+    return result.rows.map(row => ({
+      user_id: row.user_id,
+      username: row.username,
+      first_name: row.first_name,
+      confirmed: row.confirmed,
+      created_at: row.created_at,
+      last_activity: row.last_activity,
+      events_count: parseInt(row.events_count) || 0,
+      source: row.source as 'booking' | 'viewed'
+    }));
+  });
+}
+
+// Get list of all available streams from database
+export async function getAvailableStreams(): Promise<string[]> {
+  return withClient(async (client) => {
+    const result = await client.query(`
+      SELECT DISTINCT course_stream
+      FROM bookings
+      WHERE course_stream IS NOT NULL
+      ORDER BY course_stream
+    `);
+    return result.rows.map(row => row.course_stream);
   });
 }
 
