@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { format, subDays, eachDayOfInterval } from 'date-fns';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 
 interface FreeLessonRegistration {
@@ -40,14 +40,13 @@ export default function RegistrationTrendChart({ registrations }: RegistrationTr
     setChartData(trendData);
   }, [registrations]);
 
+  const lineColor = 'hsl(var(--chart-3))';
+
   if (chartData.length === 0) {
     return (
       <Card>
-        <CardHeader>
-          <CardTitle>Registration Trend (30 days)</CardTitle>
-        </CardHeader>
         <CardContent>
-          <Skeleton className="h-64" />
+          <Skeleton className="h-56" />
         </CardContent>
       </Card>
     );
@@ -55,11 +54,11 @@ export default function RegistrationTrendChart({ registrations }: RegistrationTr
 
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Registration Trend (30 days)</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="h-64">
+      <CardContent className="space-y-3">
+        <div className="text-[0.7rem] uppercase tracking-wide text-muted-foreground/80">
+          Регистрации за 30 дней
+        </div>
+        <div className="h-60">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
@@ -85,10 +84,10 @@ export default function RegistrationTrendChart({ registrations }: RegistrationTr
               <Line 
                 type="monotone" 
                 dataKey="registrations" 
-                stroke="hsl(var(--primary))" 
+                stroke={lineColor}
                 strokeWidth={2}
-                dot={{ fill: 'hsl(var(--primary))', strokeWidth: 2, r: 4 }}
-                activeDot={{ r: 6, stroke: 'hsl(var(--primary))', strokeWidth: 2 }}
+                dot={{ fill: lineColor, strokeWidth: 2, r: 4 }}
+                activeDot={{ r: 6, stroke: lineColor, strokeWidth: 2 }}
               />
             </LineChart>
           </ResponsiveContainer>

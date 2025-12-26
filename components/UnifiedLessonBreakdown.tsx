@@ -61,20 +61,16 @@ export default function UnifiedLessonBreakdown({ registrations, conversionData =
 
   if (sortedLessonTypes.length === 0) {
     return (
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Статистика по урокам</h2>
-        <div className="text-gray-500 text-center py-8">Нет данных о регистрациях</div>
+      <div className="rounded-xl border border-border/60 bg-card p-5 text-center text-sm text-muted-foreground">
+        Нет данных о регистрациях
       </div>
     );
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-      <div className="p-4 border-b border-gray-200">
-        <h2 className="text-lg font-semibold text-gray-900">Статистика по урокам</h2>
-      </div>
-      <div className="p-4">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div className="rounded-xl border border-border/60 bg-card shadow-none">
+      <div className="px-4 py-4">
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
           {sortedLessonTypes.map(([lessonType, data]) => {
             // Sort dates from newest to oldest, handling 'Дата не указана'
             const sortedDates = Object.entries(data.dates)
@@ -87,23 +83,23 @@ export default function UnifiedLessonBreakdown({ registrations, conversionData =
             const conversionInfo = getConversionData(lessonType);
             
             return (
-              <div key={lessonType} className="border border-gray-200 rounded-lg overflow-hidden">
+              <div key={lessonType} className="overflow-hidden rounded-lg border border-border/60 bg-card/60">
                 {/* Header with lesson type and total count */}
-                <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
+                <div className="border-b border-border/50 bg-muted/40 px-4 py-3">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h3 className="font-medium text-gray-900">{lessonType}</h3>
+                      <h3 className="font-medium text-foreground">{lessonType}</h3>
                       {conversionInfo && (
-                        <div className="mt-1 text-xs text-gray-600">
-                          <span className="font-medium text-green-600">{conversionInfo.attendances}</span> присоединились из{' '}
-                          <span className="font-medium text-blue-600">{conversionInfo.registrations}</span> записавшихся 
-                          <span className="ml-2 px-2 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-800">
+                        <div className="mt-1 text-xs text-muted-foreground">
+                          <span className="font-medium text-foreground">{conversionInfo.attendances}</span> присоединились из{' '}
+                          <span className="font-medium text-primary">{conversionInfo.registrations}</span> записавшихся 
+                          <span className="ml-2 rounded-full bg-secondary px-2 py-0.5 text-xs font-medium text-secondary-foreground">
                             {conversionInfo.conversion_rate}%
                           </span>
                         </div>
                       )}
                     </div>
-                    <span className="text-lg font-bold text-blue-600">
+                    <span className="text-lg font-semibold text-primary">
                       {data.totalCount} регистраций
                     </span>
                   </div>
@@ -112,16 +108,16 @@ export default function UnifiedLessonBreakdown({ registrations, conversionData =
                 {/* Dates breakdown table */}
                 <div className="p-4">
                   <div className="space-y-2">
-                    <div className="flex justify-between text-xs font-medium text-gray-500 uppercase tracking-wide">
+                    <div className="flex justify-between text-xs font-medium uppercase tracking-wide text-muted-foreground">
                       <span>Дата проведения</span>
                       <span>Записалось</span>
                     </div>
                     {sortedDates.map(([date, count]) => (
-                      <div key={date} className="flex justify-between items-center py-2 border-b border-gray-100 last:border-b-0">
-                        <span className="text-sm text-gray-900">
+                      <div key={date} className="flex items-center justify-between border-b border-border/40 py-2 last:border-b-0">
+                        <span className="text-sm text-foreground">
                           {date === 'Дата не указана' ? date : format(new Date(date), 'dd.MM.yyyy')}
                         </span>
-                        <span className="text-sm font-medium text-blue-600">
+                        <span className="text-sm font-medium text-primary">
                           {count}
                         </span>
                       </div>

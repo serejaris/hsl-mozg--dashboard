@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -113,31 +113,25 @@ export default function FreeLessonsTable({ registrations }: FreeLessonsTableProp
 
   return (
     <Card>
-      <CardHeader>
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <CardTitle className="text-lg">Free Lesson Registrations</CardTitle>
-            <p className="text-sm text-muted-foreground mt-1">
-              Total: {registrations.length} registrations
-              {filter && ` • Filtered: ${filteredRegistrations.length}`}
-            </p>
-          </div>
-          <div className="flex flex-col sm:flex-row gap-3">
-            <Input
-              type="text"
-              placeholder="Search by name, email, or lesson type..."
-              value={filter}
-              onChange={(e) => setFilter(e.target.value)}
-              className="w-full sm:w-64"
-            />
-            <Button
-              onClick={exportToCSV}
-              variant="default"
-              className="bg-green-600 hover:bg-green-700"
-            >
-              Export CSV
-            </Button>
-          </div>
+      <CardHeader className="gap-3">
+        <div className="text-sm text-muted-foreground">
+          Всего: {registrations.length} • видимых: {filteredRegistrations.length}
+        </div>
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <Input
+            type="text"
+            placeholder="Поиск по имени, email или типу урока"
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            className="w-full sm:w-64"
+          />
+          <Button
+            onClick={exportToCSV}
+            variant="secondary"
+            className="h-9"
+          >
+            Export CSV
+          </Button>
         </div>
       </CardHeader>
 

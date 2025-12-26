@@ -56,6 +56,7 @@ export default function StreamStudentsPage() {
 
   useEffect(() => {
     fetchStudents();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stream]);
 
   const filteredStudents = students.filter(s => {

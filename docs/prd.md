@@ -158,25 +158,6 @@ HSL Dashboard is a Next.js-based web application that provides analytics and man
 - Ensures compliance with communication regulations
 - Reduces manual communication overhead
 
-### 3.6 Content Management (`/content`)
-**Primary Function**: Course content organization and access
-
-#### Key Features:
-- **Content Library**
-  - Structured content organization
-  - Easy content retrieval
-  - Copy-to-clipboard functionality
-
-- **Content Analytics**
-  - Usage tracking
-  - Popular content identification
-  - Access pattern analysis
-
-#### Business Impact:
-- Streamlines content distribution
-- Tracks content effectiveness
-- Reduces content management overhead
-
 ### 3.7 User Management System
 **Primary Function**: Advanced user search and management
 

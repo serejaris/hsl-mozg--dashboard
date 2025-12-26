@@ -256,77 +256,68 @@ export async function POST(request: NextRequest) {
     const errors: Array<{ user_id: number; error: string }> = [];
     const hasCaption = trimmedMessageText.length > 0;
 
-    // Send messages in batches to avoid rate limiting
-    const batchSize = 10;
+    // Parallel batch sending for ~20x speedup (Telegram allows ~30 msg/sec)
+    const batchSize = 25;
     for (let i = 0; i < validatedRecipients.length; i += batchSize) {
       const batch = validatedRecipients.slice(i, i + batchSize);
       
-      for (const recipient of batch) {
-        try {
+      const results = await Promise.allSettled(
+        batch.map(async (recipient) => {
           let telegramMessage;
 
           if (messageType === 'video') {
             const videoOptions = { ...baseMessageOptions };
-
             if (hasCaption) {
               videoOptions.caption = messageText;
               videoOptions.parse_mode = 'HTML';
             }
-
-            telegramMessage = await bot.sendVideo(
-              recipient.user_id,
-              videoFileId!,
-              videoOptions
-            );
+            telegramMessage = await bot.sendVideo(recipient.user_id, videoFileId!, videoOptions);
           } else if (messageType === 'document') {
             const documentOptions = { ...baseMessageOptions };
-
             if (hasCaption) {
               documentOptions.caption = messageText;
               documentOptions.parse_mode = 'HTML';
             }
-
-            telegramMessage = await bot.sendDocument(
-              recipient.user_id,
-              documentFileId!,
-              documentOptions
-            );
+            telegramMessage = await bot.sendDocument(recipient.user_id, documentFileId!, documentOptions);
           } else {
             const textOptions = { ...baseMessageOptions, parse_mode: 'HTML' as const };
-
-            telegramMessage = await bot.sendMessage(
-              recipient.user_id,
-              messageText,
-              textOptions
-            );
+            telegramMessage = await bot.sendMessage(recipient.user_id, messageText, textOptions);
           }
-          
-          await updateRecipientStatus(messageId, recipient.user_id, 'sent', telegramMessage.message_id);
+
+          return { recipient, telegramMessage };
+        })
+      );
+
+      // Process batch results
+      for (let j = 0; j < results.length; j++) {
+        const result = results[j];
+        const recipient = batch[j];
+
+        if (result.status === 'fulfilled') {
+          await updateRecipientStatus(messageId, recipient.user_id, 'sent', result.value.telegramMessage.message_id);
           sentCount++;
-        } catch (error: any) {
+        } else {
+          const error = result.reason;
           console.error(`Failed to send message to user ${recipient.user_id}:`, error);
           
-          let errorMessage = 'Unknown error';
-          if (error.code === 403) {
+          const errorCode = error?.response?.body?.error_code ?? error?.code;
+          let errorMessage = error?.response?.body?.description || error?.message || 'Unknown error';
+
+          if (errorCode === 403) {
             errorMessage = 'User blocked bot';
-          } else if (error.code === 400) {
+          } else if (errorCode === 400) {
             errorMessage = 'Invalid user or message';
-          } else if (error.response?.body?.description) {
-            errorMessage = error.response.body.description;
           }
           
           await updateRecipientStatus(messageId, recipient.user_id, 'failed');
-          errors.push({
-            user_id: recipient.user_id,
-            error: errorMessage
-          });
+          errors.push({ user_id: recipient.user_id, error: errorMessage });
           failedCount++;
         }
       }
 
-      // Small delay between batches to respect rate limits
+      // Short delay between batches to respect rate limits
       if (i + batchSize < validatedRecipients.length) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
     }
 

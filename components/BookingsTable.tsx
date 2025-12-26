@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { getCourseName } from '@/lib/constants';
@@ -26,31 +26,26 @@ export default function BookingsTable({ bookings }: BookingsTableProps) {
   });
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex justify-between items-center">
-          <CardTitle className="text-lg">Последние бронирования</CardTitle>
-          <div className="flex space-x-2">
-            {[
-              { key: 'all', label: 'Все' },
-              { key: 'confirmed', label: 'Подтвержденные' },
-              { key: 'pending', label: 'В ожидании' },
-              { key: 'cancelled', label: 'Отмененные' }
-            ].map(({ key, label }) => (
-              <Button
-                key={key}
-                variant={filter === key ? "default" : "ghost"}
-                size="sm"
-                onClick={() => setFilter(key as any)}
-              >
-                {label}
-              </Button>
-            ))}
-          </div>
+    <Card className="border-border/60 shadow-none">
+      <CardContent className="space-y-3">
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          {[
+            { key: 'all', label: 'Все' },
+            { key: 'confirmed', label: 'Подтвержденные' },
+            { key: 'pending', label: 'В ожидании' },
+            { key: 'cancelled', label: 'Отмененные' }
+          ].map(({ key, label }) => (
+            <Button
+              key={key}
+              variant={filter === key ? "secondary" : "ghost"}
+              size="sm"
+              className="h-7 px-3 text-xs"
+              onClick={() => setFilter(key as any)}
+            >
+              {label}
+            </Button>
+          ))}
         </div>
-      </CardHeader>
-
-      <CardContent>
         <Table>
           <TableHeader>
             <TableRow>
@@ -94,11 +89,11 @@ export default function BookingsTable({ bookings }: BookingsTableProps) {
                     </div>
                   </TableCell>
                   <TableCell>
-                  <StreamBadge stream={booking.course_stream} />
-                </TableCell>
-                <TableCell>
-                  <StatusBadge status={booking.confirmed} />
-                </TableCell>
+                    <StreamBadge stream={booking.course_stream} />
+                  </TableCell>
+                  <TableCell>
+                    <StatusBadge status={booking.confirmed} />
+                  </TableCell>
                   <TableCell>
                     {booking.discount_percent > 0 ? (
                       <div className="flex flex-col">

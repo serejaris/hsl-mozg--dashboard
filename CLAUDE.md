@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Documentation
+
+**Project Documentation Location**: The main documentation for this project is located in `.qoder/repowiki/en/content/`
+
 ## Essential Commands
 
 - `npm run dev` - Start development server with Turbopack
@@ -48,7 +52,6 @@ This is a Next.js 15 TypeScript dashboard for HashSlash School Telegram bot anal
 - `/` - Main dashboard with key metrics and manual refresh button
 - `/workshops` - Course analytics renamed to "Курсы" with stream breakdown and consolidated statistics
 - `/analytics` - 30-day activity charts and event analysis
-- `/content` - Course content viewer with copy functionality
 - `/free-lessons` - Free lesson registrations management
 - `/messages/send` - Telegram message broadcasting interface with tabbed design (Individual/Group), user search, message composition, and security features
 - `/messages/history` - Message history viewer with delivery tracking and recipient details
@@ -75,7 +78,16 @@ The app connects to tables:
 - `message_recipients` (individual recipient tracking with delivery_status and telegram_message_id for deletion)
 
 **Current Course Configuration**
-Only displays course_id = 1 "Вайб кодинг" (EXTRA course removed). Course streams: 3rd_stream="3-й поток", 4th_stream="4-й поток", 5th_stream="5-й поток".
+Only displays course_id = 1 "Вайб кодинг" (EXTRA course removed). Course streams: 3rd_stream, 4th_stream, 5th_stream, 6th_stream, 7th_stream, 8th_stream, mentoring.
+
+**Bot Events Structure (hsl-mozg)**
+The Telegram bot (hsl-mozg repository) logs events to the `events` table:
+- Events store `course_id` in `details` JSON field, NOT `course_stream`
+- `view_program` event: `details={'course_id': 1}` — indicates user viewed course program
+- Stream is determined by course configuration at the time of event, not stored in event itself
+- Current active stream for course_id=1 is defined in `hsl-mozg/data/courses.yaml` under `confirmation.stream_name`
+- For historical streams (3rd-7th), only users with bookings records can be retrieved
+- For current active stream, users who viewed program without booking can be found via events table by filtering `course_id` and date range
 
 **Environment Requirements**
 Requires `.env.local` with Railway PostgreSQL credentials and Telegram bot configuration:

@@ -24,7 +24,14 @@
       "mcp__playwright__browser_take_screenshot",
       "mcp__playwright__browser_wait_for",
       "Bash(npm install:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Read(//Users/ris/Desktop/**)",
+      "mcp__supabase__execute_sql",
+      "Bash(PGPASSWORD=qfGwpkGnyiFkJSXZvNIUGUcChpUTolYf psql -h centerbeam.proxy.rlwy.net -p 47531 -U postgres -d railway -c \"SELECT username, user_id, course_stream, confirmed, created_at FROM bookings WHERE username IN (''masha_barhatova'', ''HansAlbertEinstein'', ''prokho'', ''gena_zhook'', ''IvanSukh'', ''healthcoach_dubai'', ''lina_nevermind'', ''thceo'', ''ThisisMikhael'', ''azhomnir'', ''irakarelidze'', ''EkaterinaSolodova'', ''KS1861'', ''Yanot1308'', ''krshk'', ''ixii_o'', ''ndvladislav'', ''Mightynasty'', ''stea_support'', ''nafanyah'', ''vikcov'', ''danegradon'', ''ydivitelnoe_ryadom'') ORDER BY username;\")",
+      "Bash(PGPASSWORD=qfGwpkGnyiFkJSXZvNIUGUcChpUTolYf psql -h centerbeam.proxy.rlwy.net -p 47531 -U postgres -d railway -c \"\nSELECT username, user_id, id as booking_id, course_stream, confirmed, created_at \nFROM bookings \nWHERE username IN (''masha_barhatova'', ''HansAlbertEinstein'', ''prokho'', ''gena_zhook'', ''IvanSukh'', ''healthcoach_dubai'', ''lina_nevermind'', ''thceo'', ''ThisisMikhael'', ''azhomnir'', ''irakarelidze'', ''EkaterinaSolodova'', ''KS1861'', ''Yanot1308'', ''krshk'', ''ixii_o'', ''ndvladislav'', ''Mightynasty'', ''stea_support'', ''nafanyah'', ''vikcov'', ''danegradon'', ''ydivitelnoe_ryadom'')\nORDER BY username, created_at DESC;\n\")",
+      "Bash(PGPASSWORD=qfGwpkGnyiFkJSXZvNIUGUcChpUTolYf psql -h centerbeam.proxy.rlwy.net -p 47531 -U postgres -d railway -c \"\nUPDATE bookings \nSET confirmed = 2 \nWHERE id IN (105, 124, 123, 128, 132, 126, 130, 109, 131, 121, 134);\n\")",
+      "Bash(PGPASSWORD=qfGwpkGnyiFkJSXZvNIUGUcChpUTolYf psql -h centerbeam.proxy.rlwy.net -p 47531 -U postgres -d railway -c \"\nUPDATE bookings \nSET course_stream = ''5th_stream'', confirmed = 2 \nWHERE id = 125;\n\")",
+      "Bash(PGPASSWORD=qfGwpkGnyiFkJSXZvNIUGUcChpUTolYf psql -h centerbeam.proxy.rlwy.net -p 47531 -U postgres -d railway -c \"\nSELECT username, user_id, id as booking_id, course_stream, confirmed, created_at \nFROM bookings \nWHERE username IN (''masha_barhatova'', ''HansAlbertEinstein'', ''prokho'', ''gena_zhook'', ''IvanSukh'', ''healthcoach_dubai'', ''lina_nevermind'', ''thceo'', ''ThisisMikhael'', ''azhomnir'', ''irakarelidze'', ''EkaterinaSolodova'', ''KS1861'', ''Yanot1308'', ''krshk'', ''ixii_o'', ''ndvladislav'', ''Mightynasty'', ''stea_support'', ''nafanyah'', ''vikcov'', ''danegradon'', ''ydivitelnoe_ryadom'')\n  AND created_at >= ''2025-09-01''\nORDER BY username, created_at DESC;\n\")"
     ],
     "deny": [],
     "ask": []

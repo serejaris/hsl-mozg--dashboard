@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { X, User, Calendar, Activity, Book, MessageSquare, GraduationCap, RefreshCw } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -43,7 +43,7 @@ export default function UserDetailsDialog({ userId, open, onClose }: UserDetails
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('overview');
 
-  const fetchUserDetails = async () => {
+  const fetchUserDetails = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -69,13 +69,13 @@ export default function UserDetailsDialog({ userId, open, onClose }: UserDetails
     } finally {
       setLoading(false);
     }
-  };
+  }, [userId]);
 
   useEffect(() => {
     if (open && userId) {
       fetchUserDetails();
     }
-  }, [open, userId]);
+  }, [open, userId, fetchUserDetails]);
 
   const handleBookingUpdate = () => {
     // Refresh user details after booking update

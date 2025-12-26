@@ -142,26 +142,22 @@ export default function Home() {
   const isRefreshing = tier1Loading || tier2Loading || tier3Loading;
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-foreground">Дашборд воронки</h1>
-        <div className="flex items-center gap-4">
-          <div className="text-sm text-muted-foreground">
-            Обновлено: {new Date().toLocaleTimeString('ru-RU')}
-          </div>
-          <Button
-            onClick={refreshAllData}
-            disabled={isRefreshing}
-            size="sm"
-          >
-            <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-            Обновить
-          </Button>
-        </div>
+    <div className="space-y-5">
+      <div className="flex w-full items-center justify-end gap-4 text-sm text-muted-foreground">
+        <div>Обновлено: {new Date().toLocaleTimeString('ru-RU')}</div>
+        <Button
+          onClick={refreshAllData}
+          disabled={isRefreshing}
+          size="sm"
+          className="gap-2"
+        >
+          <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+          Обновить
+        </Button>
       </div>
 
       {stats && (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <MetricCard
             title="Всего пользователей"
             value={stats.totalUsers}
@@ -189,14 +185,12 @@ export default function Home() {
         <UnifiedLessonBreakdown registrations={freeLessonData} conversionData={[]} />
       )}
 
-      <div className="bg-red-50 p-1 rounded-lg">
-        <HotLeads />
-      </div>
+      <HotLeads />
 
       {courseStreamStats.length > 0 && (
-        <Card>
+        <Card className="border-border/50">
           <CardContent>
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {courseStreamStats.map((stream) => (
                 <Card key={`${stream.courseId}-${stream.courseStream}`} className="bg-muted/50">
                   <CardContent className="flex justify-between items-center p-4">
@@ -222,7 +216,7 @@ export default function Home() {
         <RecentEventsTable events={recentEvents} />
       )}
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-2">
           {/* User Growth Chart */}
           {userGrowthData.length > 0 && (
             <UserGrowthChart data={userGrowthData} />

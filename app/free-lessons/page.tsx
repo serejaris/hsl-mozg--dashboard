@@ -56,7 +56,7 @@ export default function FreeLessonsPage() {
   const uniqueUsers = new Set(registrations.map(r => r.user_id)).size;
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       <PageHeader
         title="Регистрации на бесплатные уроки"
         lastUpdated={lastUpdated}
@@ -64,7 +64,7 @@ export default function FreeLessonsPage() {
         isRefreshing={isRefreshing}
       />
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         <MetricCard
           title="Всего регистраций"
           value={totalRegistrations}

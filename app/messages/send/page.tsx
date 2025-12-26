@@ -46,6 +46,7 @@ const LAST_MESSAGE_STORAGE_KEY = 'messages:last-message-draft';
 export default function SendMessagePage() {
   const [streamStats, setStreamStats] = useState<{[stream: string]: number}>({});
   const [nonCourseUsersCount, setNonCourseUsersCount] = useState<number>(0);
+  const [hackathonUsersCount, setHackathonUsersCount] = useState<number>(0);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<TelegramUser[]>([]);
   const [selectedUsers, setSelectedUsers] = useState<TelegramUser[]>([]);
@@ -319,6 +320,9 @@ export default function SendMessagePage() {
       if (stats.nonCourseUsers !== undefined) {
         setNonCourseUsersCount(stats.nonCourseUsers);
       }
+      if (stats.hackathonUsers !== undefined) {
+        setHackathonUsersCount(stats.hackathonUsers);
+      }
     } catch (err) {
       console.error('Failed to fetch stream stats:', err);
     }
@@ -357,6 +361,25 @@ export default function SendMessagePage() {
       setSelectedUsers(prev => [...prev, ...newUsers]);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load non-course users');
+    } finally {
+      setLoadingStreamUsers(null);
+    }
+  };
+
+  const loadHackathonUsers = async () => {
+    setLoadingStreamUsers('hackathon');
+    try {
+      const response = await fetch('/api/users/hackathon');
+      if (!response.ok) throw new Error('Failed to fetch hackathon users');
+      const users = await response.json();
+
+      // Add hackathon users to existing selection instead of replacing
+      const newUsers = users.filter((user: TelegramUser) =>
+        !selectedUsers.find(existing => existing.user_id === user.user_id)
+      );
+      setSelectedUsers(prev => [...prev, ...newUsers]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load hackathon users');
     } finally {
       setLoadingStreamUsers(null);
     }
@@ -542,6 +565,22 @@ export default function SendMessagePage() {
                         {nonCourseUsersCount || 0} пользователей
                       </div>
                       {loadingStreamUsers === 'non-course' && (
+                        <Loader2 className="mx-auto mt-2 animate-spin" size={16} />
+                      )}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={loadHackathonUsers}
+                      disabled={loadingStreamUsers !== null}
+                      className="p-4 h-auto flex-col bg-purple-50 hover:bg-purple-100 border-purple-200"
+                    >
+                      <div className="font-semibold text-lg text-purple-700">
+                        Хакатон
+                      </div>
+                      <div className="text-sm text-purple-600">
+                        {hackathonUsersCount || 0} участников
+                      </div>
+                      {loadingStreamUsers === 'hackathon' && (
                         <Loader2 className="mx-auto mt-2 animate-spin" size={16} />
                       )}
                     </Button>

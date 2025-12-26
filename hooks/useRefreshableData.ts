@@ -30,7 +30,8 @@ export function useRefreshableData(task: () => Promise<void>, options: Options =
     }
 
     refresh();
-  }, [immediate, refresh]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [immediate]); // Only run on mount when immediate=true, not when refresh changes
 
   return {
     refresh,

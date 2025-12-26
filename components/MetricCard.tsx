@@ -12,37 +12,45 @@ interface MetricCardProps {
   };
 }
 
-export default function MetricCard({ 
-  title, 
-  value, 
-  icon: Icon, 
+export default function MetricCard({
+  title,
+  value,
+  icon: Icon,
   description,
-  trend 
+  trend
 }: MetricCardProps) {
   return (
-    <Card>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">{title}</CardTitle>
-        <div className="p-3 bg-primary/10 rounded-lg">
-          <Icon className="h-6 w-6 text-primary" />
-        </div>
+    <Card className="border-border/60 bg-card shadow-none">
+      <CardHeader className="space-y-1 pb-0">
+        <CardTitle className="text-xs font-semibold uppercase tracking-wider text-muted-foreground/90">
+          {title}
+        </CardTitle>
       </CardHeader>
-      <CardContent>
-        <p className="text-2xl font-bold">{value}</p>
-        {description && (
-          <p className="text-xs text-muted-foreground mt-1">{description}</p>
-        )}
-        {trend && (
-          <div className="flex items-center mt-2">
-            <span className={`text-sm font-medium ${
-              trend.isPositive ? 'text-green-600' : 'text-red-600'
-            }`}>
-              {trend.isPositive ? '↑' : '↓'} {Math.abs(trend.value)}%
-            </span>
-            <span className="text-xs text-muted-foreground ml-2">vs last period</span>
-          </div>
-        )}
+      <CardContent className="flex items-end justify-between px-4 pb-1 pt-3">
+        <div>
+          <p className="text-3xl font-semibold tracking-tight">{value}</p>
+        </div>
+        <Icon className="h-5 w-5 text-muted-foreground" />
       </CardContent>
+      {(description || trend) && (
+        <CardContent className="px-4 pb-3 pt-0">
+          {description && (
+            <p className="text-xs text-muted-foreground">{description}</p>
+          )}
+          {trend && (
+            <div className="flex items-center gap-2 pt-2">
+              <span
+                className={`text-sm font-medium ${
+                  trend.isPositive ? 'text-green-600' : 'text-red-600'
+                }`}
+              >
+                {trend.isPositive ? '↑' : '↓'} {Math.abs(trend.value)}%
+              </span>
+              <span className="text-xs text-muted-foreground">vs last period</span>
+            </div>
+          )}
+        </CardContent>
+      )}
     </Card>
   );
 }

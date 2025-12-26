@@ -1,6 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-type Handler<T = unknown> = (request: NextRequest, context?: Record<string, unknown>) => Promise<T>;
+type RouteParams = Record<string, string | string[] | undefined>;
+
+export type ApiRouteContext<Params extends RouteParams = RouteParams> = {
+  params: Promise<Params>;
+};
+
+type Handler<T = unknown, Params extends RouteParams = RouteParams> = (
+  request: NextRequest,
+  context?: ApiRouteContext<Params>
+) => Promise<T>;
 
 export class HttpError extends Error {
   status: number;
@@ -18,13 +27,18 @@ interface CreateApiHandlerOptions {
   successStatus?: number;
 }
 
-export function createApiHandler<T = unknown>(
-  handler: Handler<T>,
+export function createApiHandler<T = unknown, Params extends RouteParams = RouteParams>(
+  handler: Handler<T, Params>,
   { logLabel, successStatus = 200 }: CreateApiHandlerOptions = {}
 ) {
-  return async (request: NextRequest, context?: Record<string, unknown>) => {
+  return async (request: NextRequest, context: ApiRouteContext<Params>) => {
     try {
-      const data = await handler(request, context);
+      const runtimeContext =
+        context ??
+        ({
+          params: Promise.resolve({} as Params)
+        } as ApiRouteContext<Params>);
+      const data = await handler(request, runtimeContext);
       return NextResponse.json(data, { status: successStatus });
     } catch (error) {
       const status = error instanceof HttpError ? error.status : 500;

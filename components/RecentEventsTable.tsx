@@ -1,6 +1,6 @@
 'use client';
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import type { RecentEvent } from '@/lib/types';
@@ -18,32 +18,37 @@ const formatEventType = (eventType: string) => {
 };
 
 const getEventTypeBadge = (eventType: string) => {
-  // Different colors for different event types
+  const label = formatEventType(eventType);
+
   if (eventType.includes('lesson') || eventType.includes('webinar')) {
     return (
-      <Badge variant="default" className="bg-blue-100 text-blue-800 hover:bg-blue-200">
-        {formatEventType(eventType)}
-      </Badge>
-    );
-  } else if (eventType.includes('book') || eventType.includes('purchase')) {
-    return (
-      <Badge variant="default" className="bg-green-100 text-green-800 hover:bg-green-200">
-        {formatEventType(eventType)}
-      </Badge>
-    );
-  } else if (eventType.includes('cancel') || eventType.includes('delete')) {
-    return (
-      <Badge variant="destructive">
-        {formatEventType(eventType)}
-      </Badge>
-    );
-  } else {
-    return (
-      <Badge variant="secondary">
-        {formatEventType(eventType)}
+      <Badge variant="secondary" className="bg-primary/10 text-primary">
+        {label}
       </Badge>
     );
   }
+
+  if (eventType.includes('book') || eventType.includes('purchase')) {
+    return (
+      <Badge variant="secondary" className="bg-emerald-50 text-emerald-700">
+        {label}
+      </Badge>
+    );
+  }
+
+  if (eventType.includes('cancel') || eventType.includes('delete')) {
+    return (
+      <Badge variant="destructive" className="bg-destructive/10 text-destructive">
+        {label}
+      </Badge>
+    );
+  }
+
+  return (
+    <Badge variant="secondary" className="bg-muted text-foreground/70">
+      {label}
+    </Badge>
+  );
 };
 
 const formatRelativeTime = (date: string) => {
@@ -70,12 +75,8 @@ const formatRelativeTime = (date: string) => {
 
 export default function RecentEventsTable({ events }: RecentEventsTableProps) {
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-lg">Последние действия пользователей</CardTitle>
-      </CardHeader>
-
-      <CardContent>
+    <Card className="border-border/60 shadow-none">
+      <CardContent className="space-y-3">
         <Table>
           <TableHeader>
             <TableRow>

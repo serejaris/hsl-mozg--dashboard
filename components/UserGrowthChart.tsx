@@ -1,7 +1,7 @@
 'use client';
 
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 
 interface UserGrowthData {
   date: string;
@@ -23,15 +23,18 @@ export default function UserGrowthChart({ data }: UserGrowthChartProps) {
     })
   }));
 
+  const totalColor = 'hsl(var(--chart-1))';
+  const newColor = 'hsl(var(--chart-2))';
+
   return (
     <Card>
-      <CardHeader>
-        <CardTitle>Рост пользователей бота</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="h-80">
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={formattedData}>
+      <CardContent className="space-y-3">
+        <div className="text-[0.7rem] uppercase tracking-wide text-muted-foreground/80">
+          Рост пользователей бота
+        </div>
+        <div className="h-72">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={formattedData}>
             <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
             <XAxis 
               dataKey="date" 
@@ -55,29 +58,29 @@ export default function UserGrowthChart({ data }: UserGrowthChartProps) {
             <Line 
               type="monotone" 
               dataKey="totalUsers" 
-              stroke="hsl(var(--primary))" 
+              stroke={totalColor}
               strokeWidth={3}
               name="totalUsers"
-              dot={{ fill: 'hsl(var(--primary))', strokeWidth: 2, r: 4 }}
+              dot={{ fill: totalColor, strokeWidth: 2, r: 4 }}
             />
             <Line 
               type="monotone" 
               dataKey="newUsers" 
-              stroke="#10b981" 
+              stroke={newColor}
               strokeWidth={2}
               name="newUsers"
-              dot={{ fill: '#10b981', strokeWidth: 2, r: 3 }}
+              dot={{ fill: newColor, strokeWidth: 2, r: 3 }}
             />
-          </LineChart>
-        </ResponsiveContainer>
+            </LineChart>
+          </ResponsiveContainer>
         </div>
-        <div className="mt-4 flex items-center gap-6 text-sm">
+        <div className="flex items-center gap-6 text-xs text-muted-foreground">
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 bg-primary rounded-full"></div>
+            <div className="h-3 w-3 rounded-full" style={{ backgroundColor: totalColor }} />
             <span className="text-muted-foreground">Всего пользователей</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+            <div className="h-3 w-3 rounded-full" style={{ backgroundColor: newColor }} />
             <span className="text-muted-foreground">Новые пользователи в день</span>
           </div>
         </div>

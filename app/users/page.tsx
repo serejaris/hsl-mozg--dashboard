@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Search, RefreshCw, Users as UsersIcon, Filter, Eye, Edit } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -12,7 +12,6 @@ import UserDetailsDialog from '@/components/UserDetailsDialog';
 import StreamChangeDialog from '@/components/StreamChangeDialog';
 import StatusBadge from '@/components/StatusBadge';
 import StreamBadge from '@/components/StreamBadge';
-import type { UserDetailInfo } from '@/lib/types';
 import { formatDate } from '@/lib/date';
 import type { UserDetailInfo } from '@/lib/types';
 
@@ -42,7 +41,7 @@ export default function UsersPage() {
   const [showStreamChangeDialog, setShowStreamChangeDialog] = useState(false);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  const fetchUsers = async (page: number = 1, resetData: boolean = false) => {
+  const fetchUsers = useCallback(async (page: number = 1, resetData: boolean = false) => {
     try {
       if (resetData) {
         setLoading(true);
@@ -85,11 +84,11 @@ export default function UsersPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [searchQuery, streamFilter, statusFilter]);
 
   useEffect(() => {
     fetchUsers(1, true);
-  }, [searchQuery, streamFilter, statusFilter]);
+  }, [fetchUsers]);
 
   const handleRefresh = () => {
     fetchUsers(currentPage, true);

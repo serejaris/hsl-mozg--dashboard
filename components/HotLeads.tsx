@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, ReactNode } from 'react';
 import { Flame } from 'lucide-react';
 
 interface UserActivity {
@@ -47,35 +47,44 @@ export default function HotLeads() {
     return `https://t.me/${cleanUsername}`;
   };
 
+  const CardShell = ({ children }: { children: ReactNode }) => (
+    <div className="rounded-xl border border-border/60 bg-card p-4 shadow-none">
+      {children}
+    </div>
+  );
+
   if (loading) {
     return (
-      <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-        <div className="animate-pulse">
-          <div className="h-4 bg-gray-200 rounded w-1/3 mb-4"></div>
+      <CardShell>
+        <div className="animate-pulse space-y-4">
+          <div className="h-4 w-1/3 rounded bg-muted" />
           <div className="space-y-3">
-            <div className="h-3 bg-gray-200 rounded"></div>
-            <div className="h-3 bg-gray-200 rounded"></div>
+            <div className="h-3 rounded bg-muted" />
+            <div className="h-3 rounded bg-muted" />
           </div>
         </div>
-      </div>
+      </CardShell>
     );
   }
 
   return (
-    <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-sm font-medium text-gray-600">Hottest Leads</h3>
-        <div className="p-3 bg-red-50 rounded-lg">
-          <Flame className="h-6 w-6 text-red-600" />
+    <CardShell>
+      <div className="flex items-center justify-between pb-4">
+        <h3 className="text-sm font-semibold text-muted-foreground">Активные лиды</h3>
+        <div className="rounded-lg bg-primary/5 p-2 text-primary">
+          <Flame className="h-5 w-5" />
         </div>
       </div>
-      <div className="space-y-3">
+      <div className="space-y-4">
         {hotLeads.length > 0 ? (
           hotLeads.map((lead, index) => {
             const telegramLink = getTelegramLink(lead.username);
             return (
-              <div key={`${lead.user_id}-${index}`} className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
+              <div
+                key={`${lead.user_id}-${index}`}
+                className="flex items-center justify-between rounded-lg border border-border/50 px-3 py-2"
+              >
+                <div className="flex items-center gap-3">
                   <span className="text-lg">{getScoreIcon(lead.lead_score)}</span>
                   <div>
                     {telegramLink ? (
@@ -83,28 +92,30 @@ export default function HotLeads() {
                         href={telegramLink}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-sm font-medium text-gray-900 hover:text-blue-600 hover:underline cursor-pointer"
+                        className="text-sm font-medium text-foreground hover:text-primary hover:underline"
                       >
                         {lead.first_name || lead.username} 📱
                       </a>
                     ) : (
-                      <p className="text-sm font-medium text-gray-900">
+                      <p className="text-sm font-medium text-foreground">
                         {lead.first_name || lead.username}
                       </p>
                     )}
-                    <p className="text-xs text-gray-500">
-                      {lead.total_events} events • {lead.active_days} days
+                    <p className="text-xs text-muted-foreground">
+                      {lead.total_events} событий • {lead.active_days} дней
                     </p>
                   </div>
                 </div>
-                <span className="text-sm font-bold text-gray-700">#{index + 1}</span>
+                <span className="text-xs font-semibold text-muted-foreground">
+                  #{index + 1}
+                </span>
               </div>
             );
           })
         ) : (
-          <p className="text-sm text-gray-500">No activity data available</p>
+          <p className="text-sm text-muted-foreground">Нет данных активности</p>
         )}
       </div>
-    </div>
+    </CardShell>
   );
 }

@@ -10,6 +10,7 @@ export async function GET(request: NextRequest) {
     // Return cache stats if requested
     if (stats === 'true') {
       const cacheService = UserCacheService.getInstance();
+      await cacheService.ensureInitialized();
       return NextResponse.json(cacheService.getStats());
     }
 

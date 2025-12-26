@@ -12,8 +12,6 @@ interface PageHeaderProps {
 }
 
 export default function PageHeader({
-  title,
-  description,
   lastUpdated,
   onRefresh,
   isRefreshing,
@@ -23,28 +21,20 @@ export default function PageHeader({
     ? lastUpdated.toLocaleTimeString('ru-RU')
     : null;
 
+  if (!timestamp && !actions && !onRefresh) {
+    return null;
+  }
+
   return (
-    <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">{title}</h1>
-        {description && (
-          <p className="text-sm text-muted-foreground mt-1">{description}</p>
-        )}
-      </div>
-      <div className="flex items-center gap-3">
-        {timestamp && (
-          <div className="text-sm text-muted-foreground">
-            Обновлено: {timestamp}
-          </div>
-        )}
-        {actions}
-        {onRefresh && (
-          <Button onClick={() => onRefresh()} disabled={!!isRefreshing} size="sm">
-            <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-            <span className="ml-2">Обновить</span>
-          </Button>
-        )}
-      </div>
+    <div className="flex flex-wrap items-center justify-end gap-3 text-sm text-muted-foreground">
+      {timestamp && <div>Обновлено: {timestamp}</div>}
+      {actions}
+      {onRefresh && (
+        <Button onClick={() => onRefresh()} disabled={!!isRefreshing} size="sm" className="gap-2">
+          <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+          <span>Обновить</span>
+        </Button>
+      )}
     </div>
   );
 }

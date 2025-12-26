@@ -5,7 +5,7 @@ import EventsChart from '@/components/EventsChart';
 import PieDistributionChart from '@/components/PieDistributionChart';
 import PageHeader from '@/components/PageHeader';
 import { TrendingUp, Users, Activity } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import type { DailyStats, EventStats } from '@/lib/types';
 import { useRefreshableData } from '@/hooks/useRefreshableData';
@@ -57,7 +57,7 @@ export default function AnalyticsPage() {
   const avgDailyUsers = totalNewUsers / Math.max(dailyStats.length, 1);
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="space-y-6">
       <PageHeader
         title="Analytics"
         lastUpdated={lastUpdated}
@@ -65,7 +65,7 @@ export default function AnalyticsPage() {
         isRefreshing={isRefreshing}
       />
 
-      <div className="grid gap-6 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-3">
         <Card>
           <CardContent className="flex items-center justify-between">
             <div>
@@ -116,9 +116,6 @@ export default function AnalyticsPage() {
 
       {topEvents.length > 0 && (
         <Card>
-          <CardHeader>
-            <CardTitle>Распределение событий</CardTitle>
-          </CardHeader>
           <CardContent>
             <PieDistributionChart
               title="Типы событий"
@@ -135,9 +132,6 @@ export default function AnalyticsPage() {
 
       {topEvents.length > 0 && (
         <Card>
-          <CardHeader>
-            <CardTitle>Детали событий</CardTitle>
-          </CardHeader>
           <CardContent className="p-0">
             <Table>
               <TableHeader>

@@ -15,6 +15,7 @@ class MessageSchedulerService {
 
   constructor() {
     // Initialize bot only if BOT_TOKEN exists
+    // Using family: 4 to force IPv4 and avoid AggregateError issues
     if (process.env.BOT_TOKEN) {
       this.bot = new TelegramBot(process.env.BOT_TOKEN, { polling: false });
     }

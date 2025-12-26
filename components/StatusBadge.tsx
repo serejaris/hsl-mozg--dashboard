@@ -1,9 +1,10 @@
 import { ReactNode } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { getBookingStatusMeta } from '@/lib/constants';
+import type { BookingStatus } from '@/lib/constants';
 
 interface StatusBadgeProps {
-  status: number | null;
+  status?: BookingStatus;
   fallback?: ReactNode;
 }
 
