@@ -20,7 +20,8 @@ export interface CourseStats {
 export interface CourseStreamStats {
   courseId: number;
   courseName: string;
-  courseStream: string;
+  courseStream: string;      // Formatted: "3-й поток"
+  courseStreamRaw: string;   // Raw: "3rd_stream"
   total: number;
   confirmed: number;
   pending: number;

@@ -109,6 +109,7 @@ export async function getCourseStreamStats(): Promise<CourseStreamStats[]> {
       courseId: row.course_id,
       courseName: getCourseName(row.course_id),
       courseStream: getStreamName(row.course_stream),
+      courseStreamRaw: row.course_stream,
       total: parseInt(row.total),
       confirmed: parseInt(row.confirmed),
       pending: parseInt(row.pending),

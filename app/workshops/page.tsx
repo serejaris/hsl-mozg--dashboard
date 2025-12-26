@@ -1,13 +1,14 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import BookingsTable from '@/components/BookingsTable';
 import MetricCard from '@/components/MetricCard';
-import PageHeader from '@/components/PageHeader';
-import { Calendar, Users, CheckCircle, XCircle } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Calendar, Users, CheckCircle, XCircle, RefreshCw } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import type { BookingRecord, CourseStats, CourseStreamStats } from '@/lib/types';
 import { useRefreshableData } from '@/hooks/useRefreshableData';
 
@@ -67,41 +68,45 @@ export default function WorkshopsPage() {
   );
 
   return (
-    <div className="p-6 space-y-6">
-      <PageHeader
-        title="Аналитика курсов"
-        lastUpdated={lastUpdated}
-        onRefresh={refresh}
-        isRefreshing={isRefreshing}
-      />
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-end gap-4 text-sm text-muted-foreground">
+        {lastUpdated && <div>Обновлено: {lastUpdated.toLocaleTimeString('ru-RU')}</div>}
+        <Button onClick={() => refresh()} disabled={isRefreshing} size="sm" className="gap-2">
+          <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+          Обновить
+        </Button>
+      </div>
 
       {courseStreamStats.length > 0 && (
         <Card>
-          <CardHeader>
-            <CardTitle>Активные потоки</CardTitle>
-          </CardHeader>
           <CardContent>
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {courseStreamStats.map((stream) => (
-                <Card key={`${stream.courseId}-${stream.courseStream}`} className="bg-muted/50">
-                  <CardContent className="flex justify-between items-center p-4">
-                    <div>
-                      <h3 className="font-medium">{stream.courseName}</h3>
-                      <p className="text-sm text-muted-foreground">{stream.courseStream}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-2xl font-bold text-primary">{stream.total}</p>
-                      <p className="text-xs text-muted-foreground">студентов</p>
-                    </div>
-                  </CardContent>
-                </Card>
+                <Link
+                  key={`${stream.courseId}-${stream.courseStreamRaw}`}
+                  href={`/workshops/stream/${stream.courseStreamRaw}`}
+                >
+                  <Card className="bg-muted/50 cursor-pointer hover:border-primary hover:bg-muted transition-colors">
+                    <CardContent className="flex justify-between items-center p-4">
+                      <div>
+                        <h3 className="font-medium">{stream.courseName}</h3>
+                        <p className="text-sm text-muted-foreground">{stream.courseStream}</p>
+                        <p className="text-xs text-muted-foreground">Подтверждено: {stream.confirmed}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-2xl font-bold text-primary">{stream.total}</p>
+                        <p className="text-xs text-muted-foreground">студентов</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Link>
               ))}
             </div>
           </CardContent>
         </Card>
       )}
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <MetricCard
           title="Total Registrations"
           value={totalStats.total}
@@ -131,10 +136,6 @@ export default function WorkshopsPage() {
 
       {courseStreamStats.length > 0 && (
         <Card>
-          <CardHeader>
-            <CardTitle>Статистика курсов по потокам</CardTitle>
-            <p className="text-sm text-muted-foreground mt-1">Детальная информация о каждом потоке</p>
-          </CardHeader>
           <CardContent className="p-0">
             <Table>
               <TableHeader>
