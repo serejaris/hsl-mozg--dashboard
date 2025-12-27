@@ -58,13 +58,6 @@ export interface UserGrowthData {
   newUsers: number;
 }
 
-export interface LessonConversionStats {
-  lesson_type: string;
-  registrations: number;
-  attendances: number;
-  conversion_rate: number;
-}
-
 export interface RecentEvent {
   id: number;
   user_id: number;
