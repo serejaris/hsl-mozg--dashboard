@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import MetricCard from '@/components/MetricCard';
 import UserGrowthChart from '@/components/UserGrowthChart';
 import HotLeads from '@/components/HotLeads';
@@ -192,8 +193,12 @@ export default function Home() {
           <CardContent>
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {courseStreamStats.map((stream) => (
-                <Card key={`${stream.courseId}-${stream.courseStream}`} className="bg-muted/50">
-                  <CardContent className="flex justify-between items-center p-4">
+                <Link
+                  key={`${stream.courseId}-${stream.courseStreamRaw}`}
+                  href={`/workshops/stream/${stream.courseStreamRaw}`}
+                  className="block rounded-xl border border-border/60 bg-muted/50 text-card-foreground cursor-pointer hover:border-primary hover:bg-muted transition-colors"
+                >
+                  <div className="flex justify-between items-center p-4">
                     <div>
                       <h3 className="font-medium">{stream.courseName}</h3>
                       <p className="text-sm text-muted-foreground">{stream.courseStream}</p>
@@ -203,8 +208,8 @@ export default function Home() {
                       <p className="text-2xl font-bold text-primary">{stream.total}</p>
                       <p className="text-xs text-muted-foreground">студентов</p>
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                </Link>
               ))}
             </div>
           </CardContent>
