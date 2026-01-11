@@ -1,6 +1,6 @@
 import pool from './db';
 import { withClient } from './db-utils';
-import { getCourseName, getStreamName, CURRENT_STREAM } from './constants';
+import { getCourseName, getStreamName, CURRENT_STREAM, BookingStatus } from './constants';
 import type {
   AuditLogEntry,
   BookingRecord,
@@ -38,12 +38,12 @@ export async function getDashboardStats(): Promise<DashboardStats> {
 
     // Active bookings (not cancelled)
     const activeBookingsResult = await client.query(`
-      SELECT COUNT(*) as count FROM bookings WHERE confirmed != -1
+      SELECT COUNT(*) as count FROM bookings WHERE confirmed != ${BookingStatus.CANCELLED}
     `);
 
     // Confirmed payments
     const confirmedPaymentsResult = await client.query(`
-      SELECT COUNT(*) as count FROM bookings WHERE confirmed = 2
+      SELECT COUNT(*) as count FROM bookings WHERE confirmed = ${BookingStatus.CONFIRMED}
     `);
 
     // Free lesson registrations
@@ -67,9 +67,9 @@ export async function getCourseStats(): Promise<CourseStats[]> {
       SELECT 
         course_id,
         COUNT(*) as total,
-        SUM(CASE WHEN confirmed = 2 THEN 1 ELSE 0 END) as confirmed,
-        SUM(CASE WHEN confirmed = 1 THEN 1 ELSE 0 END) as pending,
-        SUM(CASE WHEN confirmed = -1 THEN 1 ELSE 0 END) as cancelled
+        SUM(CASE WHEN confirmed = ${BookingStatus.CONFIRMED} THEN 1 ELSE 0 END) as confirmed,
+        SUM(CASE WHEN confirmed = ${BookingStatus.PENDING} THEN 1 ELSE 0 END) as pending,
+        SUM(CASE WHEN confirmed = ${BookingStatus.CANCELLED} THEN 1 ELSE 0 END) as cancelled
       FROM bookings
       WHERE course_id = 1
       GROUP BY course_id
@@ -95,9 +95,9 @@ export async function getCourseStreamStats(): Promise<CourseStreamStats[]> {
         course_id,
         course_stream,
         COUNT(*) as total,
-        SUM(CASE WHEN confirmed = 2 THEN 1 ELSE 0 END) as confirmed,
-        SUM(CASE WHEN confirmed = 1 THEN 1 ELSE 0 END) as pending,
-        SUM(CASE WHEN confirmed = -1 THEN 1 ELSE 0 END) as cancelled
+        SUM(CASE WHEN confirmed = ${BookingStatus.CONFIRMED} THEN 1 ELSE 0 END) as confirmed,
+        SUM(CASE WHEN confirmed = ${BookingStatus.PENDING} THEN 1 ELSE 0 END) as pending,
+        SUM(CASE WHEN confirmed = ${BookingStatus.CANCELLED} THEN 1 ELSE 0 END) as cancelled
       FROM bookings
       WHERE course_id = 1 AND course_stream IS NOT NULL
       GROUP BY course_id, course_stream
@@ -395,7 +395,7 @@ export async function getUsersByStream(courseStream: string): Promise<TelegramUs
       FROM bookings b
       WHERE b.course_stream = $1
         AND b.user_id IS NOT NULL
-        AND b.confirmed = 2
+        AND b.confirmed = ${BookingStatus.CONFIRMED}
       ORDER BY b.user_id, b.username, b.first_name
     `, [courseStream]);
 
@@ -517,7 +517,7 @@ export async function getUsersExceptCourseAttendees(): Promise<TelegramUser[]> {
       WHERE user_id NOT IN (
         SELECT DISTINCT user_id
         FROM bookings
-        WHERE confirmed = 2
+        WHERE confirmed = ${BookingStatus.CONFIRMED}
           AND user_id IS NOT NULL
       )
       ORDER BY user_id,
@@ -1166,7 +1166,7 @@ export async function updateUserStream(
     const bookingsResult = await client.query(`
       SELECT id, course_stream
       FROM bookings
-      WHERE user_id = $1 AND confirmed != -1
+      WHERE user_id = $1 AND confirmed != ${BookingStatus.CANCELLED}
       ORDER BY created_at DESC
       LIMIT 1
     `, [userId]);
